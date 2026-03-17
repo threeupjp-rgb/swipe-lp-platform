@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SwipeLP</title>
+  <link rel="stylesheet" href="/viewer/swipe.css">
+</head>
+<body>
+
+<!-- ローディング -->
+<div class="swipe-loading" id="loading">
+  <div class="spinner"></div>
+</div>
+
+<!-- スワイプコンテナ -->
+<div class="swipe-container" id="swipeContainer"></div>
+
+<!-- プログレスバー -->
+<div class="swipe-progress">
+  <div class="swipe-progress-bar" id="progressBar"></div>
+</div>
+
+<!-- インジケーター -->
+<div class="swipe-indicators" id="indicators"></div>
+
+<!-- ナビ矢印 -->
+<button class="swipe-nav prev" id="navPrev">&#8249;</button>
+<button class="swipe-nav next" id="navNext">&#8250;</button>
+
+<!-- CTAボタン -->
+<button class="swipe-cta" id="ctaBtn">お問い合わせ</button>
+
+<!-- スワイプヒント -->
+<div class="swipe-hint" id="swipeHint">
+  <span class="arrow">&#8592;</span> スワイプして続きを見る
+</div>
+
+<script src="/viewer/swipe-engine.js"></script>
+<script src="/viewer/tracker.js"></script>
+<script>
+// ===== 広告ピクセル管理 =====
+function initPixels(pixels) {
+  // Meta (Facebook) Pixel
+  if (pixels.meta) {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', pixels.meta);
+    fbq('track', 'PageView');
+  }
+
+  // TikTok Pixel
+  if (pixels.tiktok) {
+    !function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
+    ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group",
+    "enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"];
+    ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
+    for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
+    ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};
+    ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;
+    ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=r;ttq._t=ttq._t||{};ttq._t[e+"-"+o]=+new Date;
+    var i=d.createElement("script");i.type="text/javascript";i.async=!0;i.src=r+"?sdkid="+e+"&lib="+t;
+    var a=d.getElementsByTagName("script")[0];a.parentNode.insertBefore(i,a)};
+    ttq.load(pixels.tiktok);ttq.page()}(window,document,'ttq');
+  }
+
+  // Google Ads / gtag
+  if (pixels.google) {
+    var gs = document.createElement('script');
+    gs.async = true;
+    gs.src = 'https://www.googletagmanager.com/gtag/js?id=' + pixels.google;
+    document.head.appendChild(gs);
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    window.gtag = gtag;
+    gtag('js', new Date());
+    gtag('config', pixels.google);
+  }
+
+  // LINE Tag
+  if (pixels.line) {
+    (function(g,d,o){g._ltq=g._ltq||[];g._lt=g._lt||function(){g._ltq.push(arguments)};
+    var h=d.getElementsByTagName(o)[0];var s=d.createElement(o);s.async=1;
+    s.src='https://d.line-scdn.net/n/line_tag/public/release/v1/lt.js';
+    h.parentNode.insertBefore(s,h)})(window,document,'script');
+    _lt('init',{customerType:'lap',tagId:pixels.line});
+    _lt('send','pv',[pixels.line]);
+  }
+}
+
+function fireConversion(pixels) {
+  // Meta: Lead / Purchase イベント
+  if (pixels.meta && typeof fbq !== 'undefined') {
+    fbq('track', 'Lead');
+  }
+  // TikTok: SubmitForm イベント
+  if (pixels.tiktok && typeof ttq !== 'undefined') {
+    ttq.track('SubmitForm');
+  }
+  // Google Ads: conversion イベント
+  if (pixels.google && pixels.googleConversionLabel && typeof gtag !== 'undefined') {
+    gtag('event', 'conversion', {
+      send_to: pixels.google + '/' + pixels.googleConversionLabel
+    });
+  }
+  // LINE: conversion
+  if (pixels.line && typeof _lt !== 'undefined') {
+    _lt('send','cv',[pixels.line],['Conversion']);
+  }
+}
+</script>
+<script>
+(async function() {
+  // URLからスラッグ取得
+  const slug = window.location.pathname.split('/lp/')[1];
+  if (!slug) return;
+
+  // LP情報取得
+  let lp;
+  try {
+    const res = await fetch(`/api/lp-by-slug/${slug}`);
+    if (!res.ok) throw new Error('LP not found');
+    lp = await res.json();
+  } catch (e) {
+    document.getElementById('loading').innerHTML = '<p style="color:#fff;font-size:16px;">LPが見つかりません</p>';
+    return;
+  }
+
+  // ピクセル注入
+  initPixels(lp.config.pixels || {});
+
+  // 方向設定
+  const direction = lp.config.direction || 'horizontal';
+  const isVertical = direction === 'vertical';
+  document.body.classList.add(`dir-${direction}`);
+
+  // CTA設定
+  const ctaBtn = document.getElementById('ctaBtn');
+  ctaBtn.textContent = lp.cta_text || 'お問い合わせ';
+
+  // スワイプエンジン初期化
+  const container = document.getElementById('swipeContainer');
+  const engine = new SwipeEngine(container, { direction });
+  engine.init(lp.config.steps);
+
+  // インジケーター生成
+  const indicators = document.getElementById('indicators');
+  if (isVertical) indicators.classList.add('vertical');
+  lp.config.steps.forEach((_, i) => {
+    const dot = document.createElement('span');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    indicators.appendChild(dot);
+  });
+
+  // ナビ矢印の方向適用
+  const navPrev = document.getElementById('navPrev');
+  const navNext = document.getElementById('navNext');
+  if (isVertical) {
+    navPrev.classList.add('vertical');
+    navNext.classList.add('vertical');
+    navPrev.innerHTML = '&#8593;'; // ↑
+    navNext.innerHTML = '&#8595;'; // ↓
+  }
+
+  // スワイプヒントの方向適用
+  const hint = document.getElementById('swipeHint');
+  if (isVertical) {
+    hint.classList.add('vertical');
+    hint.innerHTML = '<span class="arrow">&#8593;</span> スワイプして続きを見る';
+  }
+
+  // プログレスバー更新
+  function updateUI(index) {
+    const total = lp.config.steps.length;
+    document.getElementById('progressBar').style.width = `${((index + 1) / total) * 100}%`;
+
+    // ドット更新
+    indicators.querySelectorAll('.dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === index);
+    });
+
+    // ナビ矢印の表示/非表示
+    navPrev.style.display = index === 0 ? 'none' : '';
+    navNext.style.display = index === total - 1 ? 'none' : '';
+  }
+
+  updateUI(0);
+
+  // トラッカー初期化
+  const tracker = new SwipeLPTracker(lp.id);
+  await tracker.startSession();
+
+  // イベント連携
+  engine.on('stepChange', (data) => {
+    updateUI(data.to);
+    tracker.onStepChange(data.from, data.to);
+
+    // ヒント非表示
+    const hint = document.getElementById('swipeHint');
+    if (hint) hint.style.display = 'none';
+  });
+
+  // クリックトラッキング
+  container.addEventListener('click', (e) => {
+    const stepEl = e.target.closest('.swipe-step');
+    if (stepEl) {
+      tracker.trackClick(engine.getCurrentIndex(), e, stepEl);
+    }
+  });
+
+  // CTAクリック
+  ctaBtn.addEventListener('click', () => {
+    tracker.trackCtaClick(engine.getCurrentIndex());
+    fireConversion(lp.config.pixels || {});
+    if (lp.cta_url && lp.cta_url !== '#') {
+      setTimeout(() => { window.open(lp.cta_url, '_blank'); }, 100);
+    }
+  });
+
+  // ナビ矢印
+  document.getElementById('navPrev').addEventListener('click', (e) => {
+    e.stopPropagation();
+    engine.prev();
+  });
+  document.getElementById('navNext').addEventListener('click', (e) => {
+    e.stopPropagation();
+    engine.next();
+  });
+
+  // ローディング非表示
+  document.getElementById('loading').classList.add('hidden');
+  setTimeout(() => document.getElementById('loading').remove(), 300);
+})();
+</script>
+</body>
+</html>

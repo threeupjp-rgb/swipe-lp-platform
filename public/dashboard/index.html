@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwipeLP Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/dashboard.css">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header class="header">
+  <h1>
+    <span class="logo">S</span>
+    SwipeLP Analytics
+  </h1>
+  <div class="header-actions">
+    <select class="lp-select" id="lpSelect"></select>
+    <div class="update-indicator">
+      <span class="dot"></span>
+      <span id="lastUpdated">最終更新: --:--:--</span>
+    </div>
+    <button class="btn btn-ghost" onclick="refreshData()">更新</button>
+    <a id="lpLink" href="#" target="_blank" class="btn btn-primary">LPを見る</a>
+    <button class="btn btn-primary" style="background:#22c55e;" onclick="openCreateLP()">+ LP作成</button>
+  </div>
+</header>
+
+<main class="main">
+  <!-- LP名表示 -->
+  <div style="margin-bottom: 16px;">
+    <h2 id="lpName" style="font-size: 20px; font-weight: 800;"></h2>
+  </div>
+
+  <!-- タブ -->
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">概要</button>
+    <button class="tab" data-tab="steps">ステップ分析</button>
+    <button class="tab" data-tab="heatmap">ヒートマップ</button>
+    <button class="tab" data-tab="funnel">ファネル</button>
+    <button class="tab" data-tab="sessions">セッション</button>
+  </div>
+
+  <!-- === 概要タブ === -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="label">セッション数</div>
+        <div class="value info" id="metricSessions">-</div>
+        <div class="sub">過去全期間</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">CTAクリック</div>
+        <div class="value success" id="metricCta">-</div>
+        <div class="sub">コンバージョン数</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">CVR</div>
+        <div class="value" id="metricCvr">-</div>
+        <div class="sub">コンバージョン率</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">平均閲覧ステップ</div>
+        <div class="value info" id="metricSteps">-</div>
+        <div class="sub">ステップ数</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">平均滞在時間</div>
+        <div class="value info" id="metricDuration">-</div>
+        <div class="sub">セッション全体</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">バウンス率</div>
+        <div class="value" id="metricBounce">-</div>
+        <div class="sub">Step 1のみで離脱</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">コンバージョンファネル</div>
+            <div class="card-subtitle">各ステップの到達率</div>
+          </div>
+        </div>
+        <div id="overviewFunnel"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">ステップ別パフォーマンス</div>
+            <div class="card-subtitle">表示数・滞在時間・離脱率</div>
+          </div>
+        </div>
+        <div id="overviewStepTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === ステップ分析タブ === -->
+  <div class="tab-content" id="tab-steps">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">ステップ別詳細メトリクス</div>
+          <div class="card-subtitle">各ステップの表示数・滞在時間・離脱率・クリック数</div>
+        </div>
+      </div>
+      <div id="stepsTable"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">平均滞在時間</div>
+          <div class="card-subtitle">ステップごとのユーザー滞在時間</div>
+        </div>
+      </div>
+      <div id="dwellChart"></div>
+    </div>
+  </div>
+
+  <!-- === ヒートマップタブ === -->
+  <div class="tab-content" id="tab-heatmap">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">クリックヒートマップ</div>
+          <div class="card-subtitle" id="heatmapTotalClicks">総クリック数: -</div>
+        </div>
+      </div>
+      <div class="heatmap-wrapper">
+        <div class="heatmap-controls">
+          <h4 style="font-size: 13px; margin-bottom: 12px; color: var(--text-muted);">ステップ選択</h4>
+          <ul class="heatmap-step-list" id="heatmapStepList"></ul>
+        </div>
+        <div class="heatmap-preview">
+          <canvas id="heatmapCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === ファネルタブ === -->
+  <div class="tab-content" id="tab-funnel">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">コンバージョンファネル</div>
+          <div class="card-subtitle">ステップ到達率からCTAクリックまでの推移</div>
+        </div>
+      </div>
+      <div id="funnelChart"></div>
+    </div>
+  </div>
+
+  <!-- === セッションタブ === -->
+  <div class="tab-content" id="tab-sessions">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">セッション一覧</div>
+          <div class="card-subtitle" id="sessionTotal">-</div>
+        </div>
+      </div>
+      <div id="sessionListContainer"></div>
+    </div>
+  </div>
+</main>
+
+<!-- セッション詳細モーダル -->
+<div class="modal-overlay" id="sessionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="sessionDetailTitle" style="font-size: 15px;">セッション詳細</h3>
+      <button class="modal-close" onclick="closeSessionModal()">&times;</button>
+    </div>
+    <div id="sessionTimeline"></div>
+  </div>
+</div>
+
+<!-- LP作成モーダル -->
+<div class="modal-overlay" id="createLpModal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <h3 style="font-size:15px;">新規LP作成</h3>
+      <button class="modal-close" onclick="closeCreateLP()">&times;</button>
+    </div>
+
+    <div class="create-form">
+      <!-- 基本設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">基本設定</h4>
+        <div class="form-row">
+          <label>LP名</label>
+          <input type="text" id="createName" placeholder="例：春キャンペーンLP">
+        </div>
+        <div class="form-row">
+          <label>スラッグ (URL)</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--text-muted);font-size:13px;">/lp/</span>
+            <input type="text" id="createSlug" placeholder="spring-campaign" style="flex:1;">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>スワイプ方向</label>
+          <div style="display:flex;gap:8px;">
+            <button class="dir-btn active" data-dir="vertical" onclick="setDirection('vertical')">縦スワイプ</button>
+            <button class="dir-btn" data-dir="horizontal" onclick="setDirection('horizontal')">横スワイプ</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ステップ設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">ステップ (スワイプページ)</h4>
+        <div id="stepsEditor"></div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:12px;" onclick="addStep()">+ ステップ追加</button>
+      </div>
+
+      <!-- CTA設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">CTAボタン</h4>
+        <div class="form-row">
+          <label>ボタンテキスト</label>
+          <input type="text" id="createCtaText" placeholder="今すぐ申し込む">
+        </div>
+        <div class="form-row">
+          <label>遷移先URL</label>
+          <input type="text" id="createCtaUrl" placeholder="https://example.com/apply">
+        </div>
+      </div>
+
+      <!-- ピクセル設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">広告ピクセル (任意)</h4>
+        <div class="form-row">
+          <label>Meta (Facebook) Pixel ID</label>
+          <input type="text" id="createPixelMeta" placeholder="例: 1234567890123456">
+        </div>
+        <div class="form-row">
+          <label>TikTok Pixel ID</label>
+          <input type="text" id="createPixelTiktok" placeholder="例: CXXXXXXXXXXXXXXXXX">
+        </div>
+        <div class="form-row">
+          <label>Google Ads / gtag ID</label>
+          <input type="text" id="createPixelGoogle" placeholder="例: AW-1234567890">
+        </div>
+        <div class="form-row">
+          <label>Google Ads コンバージョンラベル (任意)</label>
+          <input type="text" id="createPixelGoogleLabel" placeholder="例: AbCdEfGhIjK">
+        </div>
+        <div class="form-row">
+          <label>LINE Tag ID</label>
+          <input type="text" id="createPixelLine" placeholder="例: 12345678-abcd-efgh">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:16px;" onclick="submitCreateLP()">
+        LPを作成する
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CSS: tab-content の表示制御 -->
+<style>
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* LP作成フォーム */
+  .create-form { max-height: 65vh; overflow-y: auto; }
+  .form-section { margin-bottom: 24px; }
+  .form-section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .form-row input, .form-row textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; }
+  .form-row input:focus, .form-row textarea:focus { outline: none; border-color: var(--primary); }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+
+  .dir-btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .dir-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* ステップエディタ */
+  .step-editor-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; }
+  .step-editor-item .step-num { position: absolute; top: -8px; left: 12px; background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 10px; }
+  .step-editor-item .step-remove { position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; }
+  .step-editor-item .step-remove:hover { color: var(--danger); }
+
+  .image-upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.2s; position: relative; overflow: hidden; }
+  .image-upload-area:hover { border-color: var(--primary); }
+  .image-upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .image-upload-area img { max-width: 100%; max-height: 150px; border-radius: 6px; }
+  .image-upload-area .upload-text { color: var(--text-muted); font-size: 13px; }
+  .image-upload-area .upload-text small { display: block; margin-top: 4px; font-size: 11px; }
+</style>
+
+<script src="/dashboard/heatmap.js"></script>
+<script src="/dashboard/charts.js"></script>
+<script src="/dashboard/app.js"></script>
+</body>
+</html>

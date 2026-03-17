@@ -1,0 +1,14 @@
+{
+  "name": "swipe-lp-platform",
+  "version": "1.0.0",
+  "description": "SwipeLP Platform - スワイプ型LP作成 & 分析ダッシュボード",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0"
+  }
+}
