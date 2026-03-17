@@ -121,7 +121,7 @@ body.dir-vertical { touch-action: pan-x; }
 /* インジケーター（ドット）— 横モード */
 .swipe-indicators {
   position: fixed;
-  bottom: 72px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -180,33 +180,29 @@ body.dir-vertical { touch-action: pan-x; }
 /* CTAボタン */
 .swipe-cta {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  transform: none;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 100;
   background: linear-gradient(135deg, #06C755, #00b848, #06C755);
   background-size: 200% 200%;
   color: #fff;
   border: none;
-  border-radius: 0;
-  padding: 18px 24px;
-  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-  font-size: 18px;
+  border-radius: 50px;
+  padding: 16px 48px;
+  font-size: 17px;
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 -4px 24px rgba(6, 199, 85, 0.4);
+  box-shadow:
+    0 4px 20px rgba(6, 199, 85, 0.5),
+    0 0 0 0 rgba(6, 199, 85, 0.4);
   transition: transform 0.15s ease;
-  animation: ctaGlow 2.5s ease-in-out infinite, ctaShimmer 3s ease infinite;
+  animation: ctaBounce 2s ease-in-out infinite, ctaGlow 2.5s ease-in-out infinite, ctaShimmer 3s ease infinite;
   white-space: nowrap;
   letter-spacing: 1px;
   text-shadow: 0 1px 4px rgba(0,0,0,0.2);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
 /* ボタンの光沢エフェクト */
@@ -222,16 +218,29 @@ body.dir-vertical { touch-action: pan-x; }
 }
 
 .swipe-cta:active {
-  filter: brightness(0.9);
+  transform: translateX(-50%) scale(0.93);
+}
+
+/* バウンス */
+@keyframes ctaBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  15% { transform: translateX(-50%) translateY(-5px); }
+  30% { transform: translateX(-50%) translateY(0); }
+  45% { transform: translateX(-50%) translateY(-3px); }
+  60% { transform: translateX(-50%) translateY(0); }
 }
 
 /* 光る波紋エフェクト */
 @keyframes ctaGlow {
   0%, 100% {
-    box-shadow: 0 -4px 24px rgba(6, 199, 85, 0.4);
+    box-shadow:
+      0 4px 20px rgba(6, 199, 85, 0.5),
+      0 0 0 0 rgba(6, 199, 85, 0.4);
   }
   50% {
-    box-shadow: 0 -4px 36px rgba(6, 199, 85, 0.7);
+    box-shadow:
+      0 6px 28px rgba(6, 199, 85, 0.7),
+      0 0 0 10px rgba(6, 199, 85, 0);
   }
 }
 
