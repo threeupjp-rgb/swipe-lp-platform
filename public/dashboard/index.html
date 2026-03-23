@@ -22,6 +22,7 @@
     </div>
     <button class="btn btn-ghost" onclick="refreshData()">更新</button>
     <a id="lpLink" href="#" target="_blank" class="btn btn-primary">LPを見る</a>
+    <button class="btn btn-ghost" onclick="openEditLP()">編集</button>
     <button class="btn btn-primary" style="background:#22c55e;" onclick="openCreateLP()">+ LP作成</button>
   </div>
 </header>
@@ -259,6 +260,88 @@
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:16px;" onclick="submitCreateLP()">
         LPを作成する
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- LP編集モーダル -->
+<div class="modal-overlay" id="editLpModal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <h3 style="font-size:15px;">LP編集</h3>
+      <button class="modal-close" onclick="closeEditLP()">&times;</button>
+    </div>
+
+    <div class="create-form">
+      <!-- 基本設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">基本設定</h4>
+        <div class="form-row">
+          <label>LP名</label>
+          <input type="text" id="editName">
+        </div>
+        <div class="form-row">
+          <label>スワイプ方向</label>
+          <div style="display:flex;gap:8px;">
+            <button class="dir-btn" data-dir="vertical" onclick="setEditDirection('vertical')">縦スワイプ</button>
+            <button class="dir-btn" data-dir="horizontal" onclick="setEditDirection('horizontal')">横スワイプ</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ステップ設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">ステップ (スワイプページ)</h4>
+        <div id="editStepsEditor"></div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:12px;" onclick="addEditStep()">+ ステップ追加</button>
+      </div>
+
+      <!-- CTA設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">CTAボタン</h4>
+        <div class="form-row">
+          <label>ボタンテキスト</label>
+          <input type="text" id="editCtaText">
+        </div>
+        <div class="form-row">
+          <label>遷移先URL</label>
+          <input type="text" id="editCtaUrl">
+        </div>
+      </div>
+
+      <!-- ピクセル設定 -->
+      <div class="form-section">
+        <h4 class="form-section-title">広告ピクセル (任意)</h4>
+        <div class="form-row">
+          <label>Meta (Facebook) Pixel ID</label>
+          <input type="text" id="editPixelMeta">
+        </div>
+        <div class="form-row">
+          <label>TikTok Pixel ID</label>
+          <input type="text" id="editPixelTiktok">
+        </div>
+        <div class="form-row">
+          <label>Google Ads / gtag ID</label>
+          <input type="text" id="editPixelGoogle">
+        </div>
+        <div class="form-row">
+          <label>Google Ads コンバージョンラベル (任意)</label>
+          <input type="text" id="editPixelGoogleLabel">
+        </div>
+        <div class="form-row">
+          <label>LINE Tag ID</label>
+          <input type="text" id="editPixelLine">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:16px;">
+        <button class="btn btn-primary" style="flex:1;padding:14px;font-size:15px;" onclick="submitEditLP()">
+          保存する
+        </button>
+        <button class="btn btn-ghost" style="padding:14px;font-size:15px;color:#ef4444;border-color:#ef4444;" onclick="deleteLP()">
+          削除
+        </button>
+      </div>
     </div>
   </div>
 </div>

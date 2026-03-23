@@ -410,5 +410,217 @@ async function submitCreateLP() {
   }
 }
 
+// ===== LP編集機能 =====
+let editDirection = 'vertical';
+let editSteps = [];
+let editLpData = null;
+
+async function openEditLP() {
+  if (!currentLpId) return alert('LPを選択してください');
+
+  const res = await fetch(`${API}/api/lps/${currentLpId}`);
+  editLpData = await res.json();
+  const config = editLpData.config;
+
+  document.getElementById('editName').value = editLpData.name;
+  document.getElementById('editCtaText').value = editLpData.cta_text || '';
+  document.getElementById('editCtaUrl').value = editLpData.cta_url || '';
+
+  // ピクセル
+  const pixels = config.pixels || {};
+  document.getElementById('editPixelMeta').value = pixels.meta || '';
+  document.getElementById('editPixelTiktok').value = pixels.tiktok || '';
+  document.getElementById('editPixelGoogle').value = pixels.google || '';
+  document.getElementById('editPixelGoogleLabel').value = pixels.googleConversionLabel || '';
+  document.getElementById('editPixelLine').value = pixels.line || '';
+
+  // 方向
+  editDirection = config.direction || 'vertical';
+  document.querySelectorAll('#editLpModal .dir-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.dir === editDirection);
+  });
+
+  // ステップ
+  editSteps = (config.steps || []).map(s => ({
+    title: s.title || '',
+    description: s.description || '',
+    imageUrl: s.image || '',
+    bgGradient: s.bgGradient || '',
+    textColor: s.textColor || '#ffffff'
+  }));
+  if (editSteps.length === 0) {
+    editSteps = [{ title: '', description: '', imageUrl: '', bgGradient: '', textColor: '#ffffff' }];
+  }
+  renderEditStepsEditor();
+
+  document.getElementById('editLpModal').classList.add('visible');
+}
+
+function closeEditLP() {
+  document.getElementById('editLpModal').classList.remove('visible');
+}
+
+function setEditDirection(dir) {
+  editDirection = dir;
+  document.querySelectorAll('#editLpModal .dir-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.dir === dir);
+  });
+}
+
+function addEditStep() {
+  editSteps.push({ title: '', description: '', imageUrl: '', bgGradient: '', textColor: '#ffffff' });
+  renderEditStepsEditor();
+}
+
+function removeEditStep(index) {
+  if (editSteps.length <= 1) return;
+  editSteps.splice(index, 1);
+  renderEditStepsEditor();
+}
+
+function renderEditStepsEditor() {
+  const container = document.getElementById('editStepsEditor');
+  container.innerHTML = '';
+
+  editSteps.forEach((step, i) => {
+    const div = document.createElement('div');
+    div.className = 'step-editor-item';
+    div.innerHTML = `
+      <span class="step-num">Step ${i + 1}</span>
+      ${editSteps.length > 1 ? `<button class="step-remove" onclick="removeEditStep(${i})">&times;</button>` : ''}
+      <div style="margin-top:8px;">
+        <div class="form-row">
+          <label>画像</label>
+          <div class="image-upload-area" id="edit-upload-area-${i}">
+            ${step.imageUrl
+              ? `<img src="${step.imageUrl}" alt="step ${i + 1}">`
+              : `<div class="upload-text">クリックまたはドロップで画像をアップロード<small>推奨: 1080x1920px (スマホ全画面) / JPG, PNG, WebP</small></div>`
+            }
+            <input type="file" accept="image/*" onchange="handleEditImageUpload(${i}, this)">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>タイトル (画像上に表示、任意)</label>
+          <input type="text" value="${escapeHtml(step.title)}" onchange="editSteps[${i}].title=this.value">
+        </div>
+        <div class="form-row">
+          <label>説明文 (任意)</label>
+          <textarea onchange="editSteps[${i}].description=this.value">${escapeHtml(step.description)}</textarea>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div class="form-row" style="flex:1;">
+            <label>テキスト色</label>
+            <input type="color" value="${step.textColor}" onchange="editSteps[${i}].textColor=this.value" style="width:48px;height:36px;padding:2px;">
+          </div>
+          <div class="form-row" style="flex:2;">
+            <label>背景色 (画像なしの場合)</label>
+            <input type="text" value="${escapeHtml(step.bgGradient)}" onchange="editSteps[${i}].bgGradient=this.value" placeholder="linear-gradient(135deg, #667eea, #764ba2)">
+          </div>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function handleEditImageUpload(stepIndex, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const area = document.getElementById(`edit-upload-area-${stepIndex}`);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    area.querySelector('.upload-text')?.remove();
+    let img = area.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      area.insertBefore(img, area.firstChild);
+    }
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+
+  try {
+    const res = await fetch('/api/upload/image', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file
+    });
+    const data = await res.json();
+    if (data.url) {
+      editSteps[stepIndex].imageUrl = data.url;
+    }
+  } catch (e) {
+    alert('画像アップロードに失敗しました');
+  }
+}
+
+async function submitEditLP() {
+  const name = document.getElementById('editName').value.trim();
+  const ctaText = document.getElementById('editCtaText').value.trim();
+  const ctaUrl = document.getElementById('editCtaUrl').value.trim();
+
+  if (!name) return alert('LP名を入力してください');
+
+  const steps = editSteps.map(s => ({
+    title: s.title || '',
+    description: s.description || '',
+    image: s.imageUrl || '',
+    bgGradient: s.bgGradient || 'linear-gradient(135deg, #667eea, #764ba2)',
+    textColor: s.textColor || '#ffffff'
+  }));
+
+  const pixels = {};
+  const metaId = document.getElementById('editPixelMeta').value.trim();
+  const tiktokId = document.getElementById('editPixelTiktok').value.trim();
+  const googleId = document.getElementById('editPixelGoogle').value.trim();
+  const googleLabel = document.getElementById('editPixelGoogleLabel').value.trim();
+  const lineId = document.getElementById('editPixelLine').value.trim();
+  if (metaId) pixels.meta = metaId;
+  if (tiktokId) pixels.tiktok = tiktokId;
+  if (googleId) pixels.google = googleId;
+  if (googleLabel) pixels.googleConversionLabel = googleLabel;
+  if (lineId) pixels.line = lineId;
+
+  try {
+    const res = await fetch(`/api/lps/${currentLpId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        config: { direction: editDirection, steps, pixels },
+        cta_text: ctaText || 'お問い合わせ',
+        cta_url: ctaUrl || '#'
+      })
+    });
+    const data = await res.json();
+    if (data.error) return alert(data.error);
+
+    closeEditLP();
+    await loadLpList();
+    const select = document.getElementById('lpSelect');
+    select.value = currentLpId;
+    await loadLpDetail(currentLpId);
+    loadTabData();
+    alert('保存しました');
+  } catch (e) {
+    alert('保存に失敗しました: ' + e.message);
+  }
+}
+
+async function deleteLP() {
+  if (!confirm('このLPを削除しますか？アナリティクスデータも全て削除されます。')) return;
+
+  try {
+    await fetch(`/api/lps/${currentLpId}`, { method: 'DELETE' });
+    closeEditLP();
+    await loadLpList();
+    loadTabData();
+    alert('削除しました');
+  } catch (e) {
+    alert('削除に失敗しました');
+  }
+}
+
 // DOM Ready
 document.addEventListener('DOMContentLoaded', init);
