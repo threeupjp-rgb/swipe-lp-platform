@@ -72,7 +72,8 @@ body.dir-vertical { touch-action: pan-x; }
 .swipe-step img.step-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center center;
 }
 
 /* ステップコンテンツ（テキスト表示） */
