@@ -32,8 +32,9 @@ class SwipeEngine {
 
   init(steps) {
     this.state.totalSteps = steps.length;
+    // window.innerHeight は実際の表示領域 (アドレスバー除外)
     this.state.containerSize = this.isVertical
-      ? this.container.offsetHeight
+      ? window.innerHeight
       : this.container.offsetWidth;
 
     // 方向クラスを付与
@@ -259,7 +260,7 @@ class SwipeEngine {
 
   _onResize() {
     this.state.containerSize = this.isVertical
-      ? this.container.offsetHeight
+      ? window.innerHeight
       : this.container.offsetWidth;
     this.state.delta = 0;
     this._updateTransform(false);
