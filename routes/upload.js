@@ -4,7 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+const UPLOAD_DIR = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'uploads')
+  : path.join(__dirname, '..', 'uploads');
 
 // 許可する画像形式
 const ALLOWED_TYPES = {

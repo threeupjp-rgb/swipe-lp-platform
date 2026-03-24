@@ -6,8 +6,10 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// DB初期化
-const dbPath = path.join(__dirname, 'db', 'swipelp.db');
+// DB初期化 (Persistent Disk対応)
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'db');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+const dbPath = path.join(dataDir, 'swipelp.db');
 const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
@@ -32,7 +34,12 @@ app.use((req, res, next) => {
 app.use('/viewer', express.static(path.join(__dirname, 'public', 'viewer')));
 app.use('/dashboard', express.static(path.join(__dirname, 'public', 'dashboard')));
 app.use('/demo', express.static(path.join(__dirname, 'public', 'demo')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+// アップロードディレクトリ (Persistent Disk対応)
+const uploadDir = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'uploads')
+  : path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+app.use('/uploads', express.static(uploadDir, {
   maxAge: '30d',
   immutable: true
 }));

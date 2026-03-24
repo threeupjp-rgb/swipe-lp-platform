@@ -3,13 +3,27 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const dbPath = path.join(__dirname, 'db', 'swipelp.db');
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'db');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+const dbPath = path.join(dataDir, 'swipelp.db');
+
+// DB既存ならスキップ（データを保護）
+const dbExists = fs.existsSync(dbPath);
 const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL');
 
-// スキーマ実行
+// スキーマ実行（CREATE IF NOT EXISTS なので安全）
 const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8');
 db.exec(schema);
+
+if (dbExists) {
+  const lpCount = db.prepare('SELECT COUNT(*) as c FROM lps').get().c;
+  if (lpCount > 0) {
+    console.log(`DB already has ${lpCount} LPs. Skipping seed.`);
+    db.close();
+    process.exit(0);
+  }
+}
 
 function uuid() {
   return crypto.randomUUID();
