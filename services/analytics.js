@@ -181,12 +181,32 @@ class AnalyticsService {
   }
 
   getAttribution(lpId, dimension = 'utm_source') {
-    const allowed = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+    const allowed = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'referrer_domain'];
     if (!allowed.includes(dimension)) dimension = 'utm_source';
+
+    let labelExpr;
+    if (dimension === 'referrer_domain') {
+      // リファラードメインを既知サービスにマッピング
+      labelExpr = `
+        CASE
+          WHEN s.referrer LIKE '%facebook.com%' OR s.referrer LIKE '%fb.com%' OR s.referrer LIKE '%l.facebook%' THEN 'Facebook'
+          WHEN s.referrer LIKE '%instagram.com%' THEN 'Instagram'
+          WHEN s.referrer LIKE '%tiktok.com%' THEN 'TikTok'
+          WHEN s.referrer LIKE '%google.%' THEN 'Google'
+          WHEN s.referrer LIKE '%yahoo.co.jp%' OR s.referrer LIKE '%yahoo.com%' THEN 'Yahoo'
+          WHEN s.referrer LIKE '%twitter.com%' OR s.referrer LIKE '%t.co%' THEN 'Twitter/X'
+          WHEN s.referrer LIKE '%line.me%' OR s.referrer LIKE '%liff.line%' THEN 'LINE'
+          WHEN s.referrer = '' OR s.referrer IS NULL THEN '(direct)'
+          ELSE s.referrer
+        END
+      `;
+    } else {
+      labelExpr = `COALESCE(NULLIF(s.${dimension}, ''), '(direct)')`;
+    }
 
     const rows = this.db.prepare(`
       SELECT
-        COALESCE(NULLIF(s.${dimension}, ''), '(direct)') as label,
+        ${labelExpr} as label,
         COUNT(DISTINCT s.id) as sessions,
         SUM(CASE WHEN e.event_type = 'cta_click' THEN 1 ELSE 0 END) as cta_clicks,
         AVG(CASE WHEN e.event_type = 'step_view' THEN e.step_index ELSE NULL END) as avg_step
