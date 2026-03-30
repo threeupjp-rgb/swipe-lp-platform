@@ -103,6 +103,13 @@ router.get('/analytics/:lpId/funnel', (req, res) => {
   res.json(svc.getFunnel(req.params.lpId));
 });
 
+// 流入元分析
+router.get('/analytics/:lpId/attribution', (req, res) => {
+  const svc = new AnalyticsService(req.db);
+  const dimension = req.query.dimension || 'utm_source';
+  res.json(svc.getAttribution(req.params.lpId, dimension));
+});
+
 // セッション一覧
 router.get('/analytics/:lpId/sessions', (req, res) => {
   const svc = new AnalyticsService(req.db);

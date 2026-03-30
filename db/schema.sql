@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS sessions (
     viewport_width INTEGER,
     viewport_height INTEGER,
     referrer TEXT,
+    utm_source TEXT,
+    utm_medium TEXT,
+    utm_campaign TEXT,
+    utm_content TEXT,
+    utm_term TEXT,
     started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     ended_at DATETIME,
     FOREIGN KEY (lp_id) REFERENCES lps(id)

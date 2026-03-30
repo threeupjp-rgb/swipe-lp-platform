@@ -3,16 +3,18 @@ const router = express.Router();
 
 // セッション開始
 router.post('/session', (req, res) => {
-  const { sessionId, lpId, userAgent, viewportWidth, viewportHeight, referrer } = req.body;
+  const { sessionId, lpId, userAgent, viewportWidth, viewportHeight, referrer,
+    utm_source, utm_medium, utm_campaign, utm_content, utm_term } = req.body;
   if (!sessionId || !lpId) return res.status(400).json({ error: 'sessionId and lpId required' });
 
-  // 既存セッションは無視 (INSERT OR IGNORE相当)
   const existing = req.db.prepare('SELECT id FROM sessions WHERE id = ?').get(sessionId);
   if (!existing) {
     req.db.prepare(`
-      INSERT INTO sessions (id, lp_id, user_agent, viewport_width, viewport_height, referrer)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(sessionId, lpId, userAgent || '', viewportWidth || 0, viewportHeight || 0, referrer || '');
+      INSERT INTO sessions (id, lp_id, user_agent, viewport_width, viewport_height, referrer,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(sessionId, lpId, userAgent || '', viewportWidth || 0, viewportHeight || 0, referrer || '',
+      utm_source || '', utm_medium || '', utm_campaign || '', utm_content || '', utm_term || '');
   }
   res.json({ ok: true });
 });

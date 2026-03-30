@@ -180,6 +180,32 @@ class AnalyticsService {
     return { sessions, total };
   }
 
+  getAttribution(lpId, dimension = 'utm_source') {
+    const allowed = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+    if (!allowed.includes(dimension)) dimension = 'utm_source';
+
+    const rows = this.db.prepare(`
+      SELECT
+        COALESCE(NULLIF(s.${dimension}, ''), '(direct)') as label,
+        COUNT(DISTINCT s.id) as sessions,
+        SUM(CASE WHEN e.event_type = 'cta_click' THEN 1 ELSE 0 END) as cta_clicks,
+        AVG(CASE WHEN e.event_type = 'step_view' THEN e.step_index ELSE NULL END) as avg_step
+      FROM sessions s
+      LEFT JOIN events e ON s.id = e.session_id
+      WHERE s.lp_id = ?
+      GROUP BY label
+      ORDER BY sessions DESC
+    `).all(lpId);
+
+    return rows.map(r => ({
+      label: r.label,
+      sessions: r.sessions,
+      ctaClicks: r.cta_clicks,
+      cvr: r.sessions > 0 ? Math.round(r.cta_clicks / r.sessions * 1000) / 10 : 0,
+      avgStep: Math.round((r.avg_step || 0) * 10) / 10
+    }));
+  }
+
   getSessionDetail(sessionId) {
     const session = this.db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
     if (!session) return null;

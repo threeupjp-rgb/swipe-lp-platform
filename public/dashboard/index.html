@@ -40,6 +40,7 @@
     <button class="tab" data-tab="heatmap">ヒートマップ</button>
     <button class="tab" data-tab="funnel">ファネル</button>
     <button class="tab" data-tab="sessions">セッション</button>
+    <button class="tab" data-tab="attribution">流入元分析</button>
   </div>
 
   <!-- === 概要タブ === -->
@@ -152,6 +153,28 @@
         </div>
       </div>
       <div id="funnelChart"></div>
+    </div>
+  </div>
+
+  <!-- === 流入元分析タブ === -->
+  <div class="tab-content" id="tab-attribution">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">流入元別パフォーマンス</div>
+          <div class="card-subtitle">UTMパラメータ別のセッション数・CVR</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label style="font-size:12px;color:var(--text-muted);">軸:</label>
+          <select id="attributionDimension" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;">
+            <option value="utm_source">ソース (utm_source)</option>
+            <option value="utm_medium">メディア (utm_medium)</option>
+            <option value="utm_campaign">キャンペーン (utm_campaign)</option>
+            <option value="utm_content">コンテンツ (utm_content)</option>
+          </select>
+        </div>
+      </div>
+      <div id="attributionTable"></div>
     </div>
   </div>
 

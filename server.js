@@ -18,6 +18,11 @@ db.exec('PRAGMA foreign_keys = ON');
 const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8');
 db.exec(schema);
 
+// マイグレーション: UTM列追加 (既存DBに列がない場合)
+for (const col of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN ${col} TEXT`); } catch {}
+}
+
 // ミドルウェア
 const cors = require('cors');
 app.use(cors());

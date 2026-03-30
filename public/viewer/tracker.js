@@ -12,6 +12,17 @@ class SwipeLPTracker {
     this._bound = {};
   }
 
+  _getUtmParams() {
+    const p = new URLSearchParams(window.location.search);
+    return {
+      utm_source: p.get('utm_source') || '',
+      utm_medium: p.get('utm_medium') || '',
+      utm_campaign: p.get('utm_campaign') || '',
+      utm_content: p.get('utm_content') || '',
+      utm_term: p.get('utm_term') || ''
+    };
+  }
+
   async startSession() {
     try {
       await fetch(`${this.apiBase}/api/track/session`, {
@@ -23,7 +34,8 @@ class SwipeLPTracker {
           userAgent: navigator.userAgent,
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
-          referrer: document.referrer || ''
+          referrer: document.referrer || '',
+          ...this._getUtmParams()
         })
       });
     } catch (e) { /* silent */ }

@@ -79,6 +79,7 @@ async function loadTabData() {
     case 'heatmap': await loadHeatmap(); break;
     case 'funnel': await loadFunnel(); break;
     case 'sessions': await loadSessions(); break;
+    case 'attribution': await loadAttribution(); break;
   }
 
   updateTimestamp();
@@ -175,6 +176,51 @@ async function loadSessions() {
 
   document.getElementById('sessionTotal').textContent = `${data.total}件中 ${data.sessions.length}件表示`;
   renderSessionList(document.getElementById('sessionListContainer'), data, showSessionDetail);
+}
+
+// 流入元分析タブ
+async function loadAttribution() {
+  const dim = document.getElementById('attributionDimension').value;
+  const res = await fetch(`${API}/api/analytics/${currentLpId}/attribution?dimension=${dim}`);
+  const rows = await res.json();
+
+  const container = document.getElementById('attributionTable');
+  if (!rows.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);padding:24px;text-align:center;">データがありません。UTMパラメータ付きのURLからアクセスがあると表示されます。</p>';
+    return;
+  }
+
+  const maxSessions = Math.max(...rows.map(r => r.sessions));
+  container.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);">
+          <th style="padding:10px 12px;text-align:left;">流入元</th>
+          <th style="padding:10px 12px;text-align:right;">セッション</th>
+          <th style="padding:10px 12px;text-align:left;min-width:120px;"></th>
+          <th style="padding:10px 12px;text-align:right;">CTAクリック</th>
+          <th style="padding:10px 12px;text-align:right;">CVR</th>
+          <th style="padding:10px 12px;text-align:right;">平均到達ステップ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;font-weight:600;">${r.label}</td>
+            <td style="padding:10px 12px;text-align:right;">${r.sessions}</td>
+            <td style="padding:10px 12px;">
+              <div style="height:6px;background:var(--surface2);border-radius:3px;">
+                <div style="height:100%;width:${Math.round(r.sessions/maxSessions*100)}%;background:var(--accent);border-radius:3px;"></div>
+              </div>
+            </td>
+            <td style="padding:10px 12px;text-align:right;">${r.ctaClicks}</td>
+            <td style="padding:10px 12px;text-align:right;font-weight:700;color:${r.cvr >= 5 ? 'var(--success)' : r.cvr >= 2 ? 'var(--accent)' : 'var(--text-muted)'};">${r.cvr}%</td>
+            <td style="padding:10px 12px;text-align:right;">${r.avgStep}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 // セッション詳細モーダル
@@ -622,5 +668,10 @@ async function deleteLP() {
   }
 }
 
-// DOM Ready
-document.addEventListener('DOMContentLoaded', init);
+// 流入元分析の軸切り替え
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  document.getElementById('attributionDimension')?.addEventListener('change', () => {
+    if (currentTab === 'attribution') loadAttribution();
+  });
+});
