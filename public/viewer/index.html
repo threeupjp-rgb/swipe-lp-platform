@@ -48,9 +48,9 @@
 <!-- 改善2: 残りステップカウントダウン -->
 <div class="step-remaining" id="stepRemaining"></div>
 
-<!-- 改善3: 社会的証明ポップアップ -->
+<!-- 改善3: 閲覧中人数 -->
 <div class="social-proof" id="socialProof">
-  <div class="social-proof-icon">✓</div>
+  <div class="social-proof-icon">●</div>
   <div class="social-proof-text" id="socialProofText"></div>
 </div>
 
@@ -243,30 +243,22 @@ function fireConversion(pixels) {
   }
   updateRemaining(0);
 
-  // ===== 改善3: 社会的証明ポップアップ =====
+  // ===== 改善3: 閲覧中人数表示 =====
   const proofEl = document.getElementById('socialProof');
   const proofText = document.getElementById('socialProofText');
-  // CTAテキストからアクション文言を生成
-  const ctaLabel = lp.cta_text || 'お問い合わせ';
-  const proofActions = [ctaLabel + 'しました', '申し込みしました', 'タップしました'];
-  const proofTimes = ['1分前', '3分前', '5分前', '8分前', '12分前', '15分前', '20分前'];
-  let proofIndex = 0;
-  function showProof() {
-    const time = proofTimes[Math.floor(Math.random() * proofTimes.length)];
-    const action = proofActions[Math.floor(Math.random() * proofActions.length)];
-    const viewers = Math.floor(Math.random() * 8) + 3;
-    proofText.innerHTML = `${time}に${action}<br><span style="font-size:11px;opacity:0.7">現在 ${viewers}人 が閲覧中</span>`;
-    proofEl.classList.add('visible');
-    setTimeout(() => proofEl.classList.remove('visible'), 4000);
-    proofIndex++;
+  let currentViewers = Math.floor(Math.random() * 6) + 3; // 3〜8人で初期化
+  function updateViewers() {
+    // ±1〜2人でゆるやかに変動、最低2人
+    const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, +1
+    currentViewers = Math.max(2, Math.min(15, currentViewers + delta));
+    proofText.innerHTML = `現在 <strong>${currentViewers}人</strong> が閲覧中`;
   }
-  // 5秒後に初回、その後15〜25秒ランダムで繰り返す
-  setTimeout(showProof, 5000);
-  function scheduleNextProof() {
-    const delay = 15000 + Math.random() * 10000;
-    setTimeout(() => { showProof(); scheduleNextProof(); }, delay);
-  }
-  scheduleNextProof();
+  updateViewers();
+  proofEl.classList.add('visible');
+  // 8〜15秒ごとに人数を更新
+  setInterval(() => {
+    updateViewers();
+  }, 8000 + Math.random() * 7000);
 
   // イベント連携
   engine.on('stepChange', (data) => {
