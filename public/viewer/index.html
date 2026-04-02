@@ -31,9 +31,24 @@
 <!-- CTAボタン -->
 <button class="swipe-cta" id="ctaBtn">お問い合わせ</button>
 
-<!-- スワイプヒント -->
+<!-- スワイプヒント（テキスト版） -->
 <div class="swipe-hint" id="swipeHint">
   <span class="arrow">&#8592;</span> スワイプして続きを見る
+</div>
+
+<!-- 改善1: スワイプ誘導ジェスチャー -->
+<div class="swipe-gesture-hint" id="gestureHint">
+  <div class="gesture-hand">👆</div>
+  <div class="gesture-text">スワイプして次へ</div>
+</div>
+
+<!-- 改善2: 残りステップカウントダウン -->
+<div class="step-remaining" id="stepRemaining"></div>
+
+<!-- 改善3: 社会的証明ポップアップ -->
+<div class="social-proof" id="socialProof">
+  <div class="social-proof-icon">🔔</div>
+  <div class="social-proof-text" id="socialProofText"></div>
 </div>
 
 <script src="/viewer/swipe-engine.js"></script>
@@ -193,14 +208,74 @@ function fireConversion(pixels) {
   const tracker = new SwipeLPTracker(lp.id);
   await tracker.startSession();
 
+  // ===== 改善1: スワイプ誘導ジェスチャー =====
+  const gestureHint = document.getElementById('gestureHint');
+  if (isVertical) gestureHint.classList.add('vertical');
+  // 2秒後に表示、スワイプしたら消える
+  let gestureShown = false;
+  setTimeout(() => { gestureShown = true; }, 500);
+  function hideGesture() {
+    if (gestureHint && !gestureHint.classList.contains('hidden')) {
+      gestureHint.classList.add('hidden');
+    }
+  }
+
+  // ===== 改善2: 残りステップカウントダウン =====
+  const remainEl = document.getElementById('stepRemaining');
+  function updateRemaining(index) {
+    const left = lp.config.steps.length - 1 - index;
+    if (left > 0) {
+      remainEl.textContent = `あと ${left} 枚`;
+      remainEl.style.display = '';
+      remainEl.classList.remove('pulse');
+      void remainEl.offsetWidth; // reflow
+      remainEl.classList.add('pulse');
+    } else {
+      remainEl.textContent = 'ラスト！';
+      remainEl.style.display = '';
+      remainEl.classList.remove('pulse');
+      void remainEl.offsetWidth;
+      remainEl.classList.add('pulse');
+    }
+  }
+  updateRemaining(0);
+
+  // ===== 改善3: 社会的証明ポップアップ =====
+  const proofEl = document.getElementById('socialProof');
+  const proofText = document.getElementById('socialProofText');
+  const proofMessages = [
+    { time: '3分前', action: 'LINE追加しました', area: '熊本市' },
+    { time: '5分前', action: '応募しました', area: '福岡市' },
+    { time: '8分前', action: 'LINE追加しました', area: '大阪市' },
+    { time: '12分前', action: '応募しました', area: '東京都' },
+    { time: '15分前', action: 'LINE追加しました', area: '名古屋市' },
+  ];
+  let proofIndex = 0;
+  function showProof() {
+    const msg = proofMessages[proofIndex % proofMessages.length];
+    proofText.innerHTML = `<strong>${msg.area}</strong>の方が${msg.time}に<br>${msg.action}`;
+    proofEl.classList.add('visible');
+    setTimeout(() => proofEl.classList.remove('visible'), 4000);
+    proofIndex++;
+  }
+  // 5秒後に初回、その後15〜25秒ランダムで繰り返す
+  setTimeout(showProof, 5000);
+  function scheduleNextProof() {
+    const delay = 15000 + Math.random() * 10000;
+    setTimeout(() => { showProof(); scheduleNextProof(); }, delay);
+  }
+  scheduleNextProof();
+
   // イベント連携
   engine.on('stepChange', (data) => {
     updateUI(data.to);
+    updateRemaining(data.to);
     tracker.onStepChange(data.from, data.to);
 
-    // ヒント非表示
+    // ヒント・ジェスチャー非表示
     const hint = document.getElementById('swipeHint');
     if (hint) hint.style.display = 'none';
+    hideGesture();
   });
 
   // クリックトラッキング
