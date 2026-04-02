@@ -522,19 +522,8 @@ body.dir-vertical { touch-action: pan-x; }
 }
 
 .social-proof-icon {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #06C755;
-  box-shadow: 0 0 0 3px rgba(6,199,85,0.3);
+  font-size: 20px;
   flex-shrink: 0;
-  font-size: 0;
-  animation: livePulse 2s ease-in-out infinite;
-}
-
-@keyframes livePulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(6,199,85,0.3); }
-  50% { box-shadow: 0 0 0 6px rgba(6,199,85,0.1); }
 }
 
 .social-proof-text {

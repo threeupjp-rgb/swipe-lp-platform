@@ -48,9 +48,9 @@
 <!-- 改善2: 残りステップカウントダウン -->
 <div class="step-remaining" id="stepRemaining"></div>
 
-<!-- 改善3: 閲覧中人数 -->
+<!-- 改善3: 社会的証明ポップアップ -->
 <div class="social-proof" id="socialProof">
-  <div class="social-proof-icon">●</div>
+  <div class="social-proof-icon">🔔</div>
   <div class="social-proof-text" id="socialProofText"></div>
 </div>
 
@@ -243,22 +243,23 @@ function fireConversion(pixels) {
   }
   updateRemaining(0);
 
-  // ===== 改善3: 閲覧中人数表示 =====
+  // ===== 改善3: 社会的証明ポップアップ =====
   const proofEl = document.getElementById('socialProof');
   const proofText = document.getElementById('socialProofText');
-  let currentViewers = Math.floor(Math.random() * 6) + 3; // 3〜8人で初期化
-  function updateViewers() {
-    // ±1〜2人でゆるやかに変動、最低2人
-    const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, +1
-    currentViewers = Math.max(2, Math.min(15, currentViewers + delta));
-    proofText.innerHTML = `現在 <strong>${currentViewers}人</strong> が閲覧中`;
+  const proofTimes = [1, 2, 3, 5, 7, 10, 12, 15, 18, 20];
+  function showProof() {
+    const min = proofTimes[Math.floor(Math.random() * proofTimes.length)];
+    proofText.innerHTML = `<strong>${min}分前</strong>に他の人がLINE追加しました`;
+    proofEl.classList.add('visible');
+    setTimeout(() => proofEl.classList.remove('visible'), 4000);
   }
-  updateViewers();
-  proofEl.classList.add('visible');
-  // 8〜15秒ごとに人数を更新
-  setInterval(() => {
-    updateViewers();
-  }, 8000 + Math.random() * 7000);
+  // 5秒後に初回、その後15〜25秒ランダムで繰り返す
+  setTimeout(showProof, 5000);
+  function scheduleNextProof() {
+    const delay = 15000 + Math.random() * 10000;
+    setTimeout(() => { showProof(); scheduleNextProof(); }, delay);
+  }
+  scheduleNextProof();
 
   // イベント連携
   engine.on('stepChange', (data) => {
