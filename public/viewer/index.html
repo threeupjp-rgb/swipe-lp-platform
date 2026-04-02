@@ -38,7 +38,10 @@
 
 <!-- 改善1: スワイプ誘導ジェスチャー -->
 <div class="swipe-gesture-hint" id="gestureHint">
-  <div class="gesture-hand">👆</div>
+  <div class="gesture-hand">
+    <div class="gesture-circle"></div>
+    <div class="gesture-arrow"></div>
+  </div>
   <div class="gesture-text">スワイプして次へ</div>
 </div>
 
@@ -47,7 +50,7 @@
 
 <!-- 改善3: 社会的証明ポップアップ -->
 <div class="social-proof" id="socialProof">
-  <div class="social-proof-icon">🔔</div>
+  <div class="social-proof-icon">✓</div>
   <div class="social-proof-text" id="socialProofText"></div>
 </div>
 
@@ -243,17 +246,16 @@ function fireConversion(pixels) {
   // ===== 改善3: 社会的証明ポップアップ =====
   const proofEl = document.getElementById('socialProof');
   const proofText = document.getElementById('socialProofText');
-  const proofMessages = [
-    { time: '3分前', action: 'LINE追加しました', area: '熊本市' },
-    { time: '5分前', action: '応募しました', area: '福岡市' },
-    { time: '8分前', action: 'LINE追加しました', area: '大阪市' },
-    { time: '12分前', action: '応募しました', area: '東京都' },
-    { time: '15分前', action: 'LINE追加しました', area: '名古屋市' },
-  ];
+  // CTAテキストからアクション文言を生成
+  const ctaLabel = lp.cta_text || 'お問い合わせ';
+  const proofActions = [ctaLabel + 'しました', '申し込みしました', 'タップしました'];
+  const proofTimes = ['1分前', '3分前', '5分前', '8分前', '12分前', '15分前', '20分前'];
   let proofIndex = 0;
   function showProof() {
-    const msg = proofMessages[proofIndex % proofMessages.length];
-    proofText.innerHTML = `<strong>${msg.area}</strong>の方が${msg.time}に<br>${msg.action}`;
+    const time = proofTimes[Math.floor(Math.random() * proofTimes.length)];
+    const action = proofActions[Math.floor(Math.random() * proofActions.length)];
+    const viewers = Math.floor(Math.random() * 8) + 3;
+    proofText.innerHTML = `${time}に${action}<br><span style="font-size:11px;opacity:0.7">現在 ${viewers}人 が閲覧中</span>`;
     proofEl.classList.add('visible');
     setTimeout(() => proofEl.classList.remove('visible'), 4000);
     proofIndex++;

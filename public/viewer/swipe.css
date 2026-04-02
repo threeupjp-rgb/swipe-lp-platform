@@ -392,13 +392,46 @@ body.dir-vertical { touch-action: pan-x; }
 }
 
 .gesture-hand {
-  font-size: 36px;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-  animation: gestureSwipe 1.8s ease-in-out infinite;
+  position: relative;
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 2px 12px rgba(0,0,0,0.3));
+  animation: gestureSwipe 2s ease-in-out infinite;
+}
+
+.gesture-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.3), 0 0 0 8px rgba(255,255,255,0.1);
+}
+
+.gesture-arrow {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%) rotate(-45deg);
+  border-right: 2.5px solid rgba(255,255,255,0.8);
+  border-bottom: 2.5px solid rgba(255,255,255,0.8);
+}
+
+/* 縦モード: 矢印を下向きに */
+.swipe-gesture-hint.vertical .gesture-arrow {
+  top: auto;
+  bottom: 2px;
+  right: 50%;
+  transform: translateX(50%) rotate(45deg);
 }
 
 .swipe-gesture-hint.vertical .gesture-hand {
-  animation: gestureSwipeV 1.8s ease-in-out infinite;
+  animation: gestureSwipeV 2s ease-in-out infinite;
 }
 
 .gesture-text {
@@ -414,17 +447,17 @@ body.dir-vertical { touch-action: pan-x; }
 }
 
 @keyframes gestureSwipe {
-  0%, 100% { transform: translateX(30px); opacity: 0.4; }
-  20% { opacity: 1; }
-  60% { transform: translateX(-30px); opacity: 1; }
-  80% { opacity: 0.4; }
+  0%, 100% { transform: translateX(20px); opacity: 0.3; }
+  30% { opacity: 1; }
+  60% { transform: translateX(-20px); opacity: 1; }
+  85% { opacity: 0.3; }
 }
 
 @keyframes gestureSwipeV {
-  0%, 100% { transform: translateY(25px); opacity: 0.4; }
-  20% { opacity: 1; }
-  60% { transform: translateY(-25px); opacity: 1; }
-  80% { opacity: 0.4; }
+  0%, 100% { transform: translateY(20px); opacity: 0.3; }
+  30% { opacity: 1; }
+  60% { transform: translateY(-20px); opacity: 1; }
+  85% { opacity: 0.3; }
 }
 
 @keyframes gestureAppear {
@@ -489,7 +522,16 @@ body.dir-vertical { touch-action: pan-x; }
 }
 
 .social-proof-icon {
-  font-size: 20px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #06C755;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
