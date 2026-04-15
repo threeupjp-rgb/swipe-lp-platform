@@ -48,10 +48,10 @@
 <!-- 改善2: 残りステップカウントダウン -->
 <div class="step-remaining" id="stepRemaining"></div>
 
-<!-- 改善3: 社会的証明ポップアップ -->
-<div class="social-proof" id="socialProof">
-  <div class="social-proof-icon">🔔</div>
-  <div class="social-proof-text" id="socialProofText"></div>
+<!-- 改善3: 閲覧中バッジ -->
+<div class="viewer-badge" id="viewerBadge">
+  <span class="viewer-dot"></span>
+  <span class="viewer-text" id="viewerText"></span>
 </div>
 
 <script src="/viewer/swipe-engine.js"></script>
@@ -243,23 +243,16 @@ function fireConversion(pixels) {
   }
   updateRemaining(0);
 
-  // ===== 改善3: 社会的証明ポップアップ =====
-  const proofEl = document.getElementById('socialProof');
-  const proofText = document.getElementById('socialProofText');
-  const proofTimes = [1, 2, 3, 5, 7, 10, 12, 15, 18, 20];
-  function showProof() {
-    const min = proofTimes[Math.floor(Math.random() * proofTimes.length)];
-    proofText.innerHTML = `<strong>${min}分前</strong>に他の人がLINE追加しました`;
-    proofEl.classList.add('visible');
-    setTimeout(() => proofEl.classList.remove('visible'), 4000);
+  // ===== 改善3: 閲覧中人数バッジ =====
+  const viewerText = document.getElementById('viewerText');
+  let currentViewers = Math.floor(Math.random() * 6) + 3; // 3〜8人
+  function updateViewers() {
+    const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, +1
+    currentViewers = Math.max(2, Math.min(12, currentViewers + delta));
+    viewerText.textContent = `${currentViewers}人が閲覧中`;
   }
-  // 5秒後に初回、その後15〜25秒ランダムで繰り返す
-  setTimeout(showProof, 5000);
-  function scheduleNextProof() {
-    const delay = 15000 + Math.random() * 10000;
-    setTimeout(() => { showProof(); scheduleNextProof(); }, delay);
-  }
-  scheduleNextProof();
+  updateViewers();
+  setInterval(updateViewers, 10000 + Math.random() * 5000);
 
   // イベント連携
   engine.on('stepChange', (data) => {

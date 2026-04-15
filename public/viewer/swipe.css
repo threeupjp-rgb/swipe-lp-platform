@@ -497,39 +497,34 @@ body.dir-vertical { touch-action: pan-x; }
   100% { transform: scale(1); }
 }
 
-/* ===== 改善3: 社会的証明ポップアップ ===== */
-.social-proof {
+/* ===== 改善3: 閲覧中バッジ ===== */
+.viewer-badge {
   position: fixed;
-  bottom: 90px;
+  top: 12px;
   left: 12px;
   z-index: 80;
-  background: rgba(255,255,255,0.95);
-  color: #333;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
   font-size: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  transform: translateX(-120%);
-  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  max-width: 260px;
+  gap: 6px;
 }
 
-.social-proof.visible {
-  transform: translateX(0);
+.viewer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #06C755;
+  animation: dotPulse 2s ease-in-out infinite;
 }
 
-.social-proof-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.social-proof-text {
-  line-height: 1.4;
-}
-
-.social-proof-text strong {
-  color: #06C755;
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
