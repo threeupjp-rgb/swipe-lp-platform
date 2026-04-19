@@ -8,11 +8,13 @@
   --bg: #0f1117;
   --bg-card: #1a1d27;
   --bg-hover: #252836;
+  --surface2: #22253a;
   --border: #2a2d3a;
   --text: #e4e4e7;
   --text-muted: #71717a;
   --primary: #6366f1;
   --primary-light: #818cf8;
+  --accent: #f59e0b;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -163,8 +165,9 @@ html, body {
 }
 
 .metric-card .value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
+  letter-spacing: -0.5px;
 }
 
 .metric-card .sub {
@@ -280,6 +283,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .heatmap-step-list li:hover { background: var(--bg-hover); }
@@ -529,4 +533,95 @@ html, body {
   color: var(--text-muted);
   font-size: 20px;
   cursor: pointer;
+}
+
+/* === 期間フィルター === */
+.date-filter {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+
+.date-btn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.date-btn:hover { color: var(--text); background: var(--bg-hover); }
+.date-btn.active { color: #fff; background: var(--primary); }
+
+.date-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-custom input[type="date"] {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+/* === ヒートマップ画像背景 === */
+.heatmap-preview {
+  position: relative;
+}
+
+.heatmap-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius);
+  z-index: 0;
+}
+
+#heatmapCanvas {
+  position: relative;
+  z-index: 1;
+}
+
+/* === ステップ分析 改善 === */
+.step-metric-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-metric-bar .bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.step-metric-bar .bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+/* === ヘッダーレスポンシブ === */
+@media (max-width: 1200px) {
+  .header { flex-wrap: wrap; gap: 12px; }
+  .header-actions { flex-wrap: wrap; }
 }

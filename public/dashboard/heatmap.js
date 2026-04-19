@@ -62,6 +62,12 @@ class HeatmapRenderer {
   }
 
   _drawBackground(bgGradient, w, h) {
+    if (bgGradient === '__transparent__') {
+      // 画像背景モード: canvasは半透明の黒オーバーレイのみ
+      this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      this.ctx.fillRect(0, 0, w, h);
+      return;
+    }
     if (bgGradient) {
       // CSSグラデーションをCanvas用に変換（簡易実装）
       const colors = bgGradient.match(/#[0-9a-fA-F]{6}/g) || ['#667eea', '#764ba2'];

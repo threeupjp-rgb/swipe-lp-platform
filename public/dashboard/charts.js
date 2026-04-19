@@ -20,22 +20,30 @@ function renderFunnel(container, data) {
   const colors = [...ChartColors.steps, ChartColors.success];
 
   data.steps.forEach((step, i) => {
+    const isLast = i === data.steps.length - 1;
+    const barColor = isLast ? ChartColors.success : colors[i % colors.length];
     const row = document.createElement('div');
     row.className = 'funnel-step';
+
+    // 前ステップからの離脱率を計算
+    const prevRate = i > 0 ? data.steps[i - 1].rate : 100;
+    const dropFromPrev = prevRate > 0 ? Math.round((prevRate - step.rate) * 10) / 10 : 0;
 
     row.innerHTML = `
       <div class="funnel-label">${step.label}</div>
       <div class="funnel-bar-wrap">
-        <div class="funnel-bar" style="width: 0%; background: ${colors[i % colors.length]}">
+        <div class="funnel-bar" style="width: 0%; background: ${barColor}">
           ${step.rate}%
         </div>
       </div>
-      <div class="funnel-count">${step.count.toLocaleString()}</div>
+      <div class="funnel-count">
+        ${step.count.toLocaleString()}
+        ${i > 0 ? `<div style="font-size:10px;color:${ChartColors.danger};margin-top:2px;">-${dropFromPrev}%</div>` : ''}
+      </div>
     `;
 
     funnelEl.appendChild(row);
 
-    // アニメーション
     requestAnimationFrame(() => {
       setTimeout(() => {
         row.querySelector('.funnel-bar').style.width = `${Math.max(step.rate, 5)}%`;
@@ -48,29 +56,44 @@ function renderFunnel(container, data) {
 
 // ステップ別テーブル描画
 function renderStepTable(container, data) {
+  const maxViews = Math.max(...data.steps.map(s => s.viewCount), 1);
   const html = `
     <table class="step-table">
       <thead>
         <tr>
           <th>ステップ</th>
           <th>表示数</th>
+          <th style="min-width:100px">到達率</th>
           <th>平均滞在</th>
-          <th>離脱率</th>
+          <th style="min-width:120px">離脱率</th>
           <th>クリック数</th>
         </tr>
       </thead>
       <tbody>
-        ${data.steps.map(s => `
+        ${data.steps.map(s => {
+          const reachRate = Math.round(s.viewCount / maxViews * 1000) / 10;
+          const dropColor = s.dropOffRate > 50 ? ChartColors.danger : s.dropOffRate > 30 ? ChartColors.warning : ChartColors.success;
+          const reachColor = reachRate > 60 ? ChartColors.success : reachRate > 30 ? ChartColors.info : ChartColors.warning;
+          return `
           <tr>
-            <td>Step ${s.stepIndex + 1}</td>
+            <td style="font-weight:700;">Step ${s.stepIndex + 1}</td>
             <td>${s.viewCount.toLocaleString()}</td>
+            <td>
+              <div class="step-metric-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:${reachRate}%;background:${reachColor}"></div></div>
+                <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;color:${reachColor}">${reachRate}%</span>
+              </div>
+            </td>
             <td>${(s.avgDwellTime / 1000).toFixed(1)}秒</td>
-            <td style="color: ${s.dropOffRate > 50 ? ChartColors.danger : s.dropOffRate > 30 ? ChartColors.warning : ChartColors.success}">
-              ${s.dropOffRate}%
+            <td>
+              <div class="step-metric-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:${Math.min(s.dropOffRate, 100)}%;background:${dropColor}"></div></div>
+                <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;color:${dropColor}">${s.dropOffRate}%</span>
+              </div>
             </td>
             <td>${s.clickCount.toLocaleString()}</td>
-          </tr>
-        `).join('')}
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
   `;
@@ -89,9 +112,9 @@ function renderDwellChart(container, data) {
     const pct = maxDwell > 0 ? (step.avg_dwell / maxDwell * 100) : 0;
     const seconds = (step.avg_dwell / 1000).toFixed(1);
 
-    // 色の選択: 滞在時間が長いほど暖色
+    // 色の選択: 滞在時間に応じたグラデーション
     const ratio = step.avg_dwell / maxDwell;
-    const color = ratio > 0.7 ? ChartColors.success : ratio > 0.4 ? ChartColors.info : ChartColors.warning;
+    const color = ratio > 0.7 ? ChartColors.primary : ratio > 0.4 ? ChartColors.primaryLight : ChartColors.info;
 
     const bar = document.createElement('div');
     bar.className = 'dwell-bar';
@@ -133,12 +156,12 @@ function renderSessionList(container, data, onClickSession) {
     }
 
     const date = new Date(session.started_at);
-    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const dateStr = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
 
     item.innerHTML = `
       <div class="session-meta">
-        <div>${dateStr} <span class="device">${session.viewport_width}x${session.viewport_height}</span></div>
-        <div class="device">${session.event_count}イベント</div>
+        <div style="font-weight:600;">${dateStr} <span class="device">${session.viewport_width}x${session.viewport_height}</span></div>
+        <div class="device">${session.event_count}イベント / Step ${(session.max_step || 0) + 1}まで閲覧</div>
       </div>
       <span class="session-badge ${badgeClass}">${badgeText}</span>
     `;

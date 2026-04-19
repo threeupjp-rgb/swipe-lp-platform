@@ -3,41 +3,63 @@ class AnalyticsService {
     this.db = db;
   }
 
-  getOverview(lpId) {
+  // 期間フィルタ用のWHERE句を生成
+  _dateFilter(alias, from, to) {
+    const conditions = [];
+    const params = [];
+    if (from) { conditions.push(`${alias}.started_at >= ?`); params.push(from); }
+    if (to) { conditions.push(`${alias}.started_at <= ?`); params.push(to + ' 23:59:59'); }
+    return { sql: conditions.length ? ' AND ' + conditions.join(' AND ') : '', params };
+  }
+
+  _eventDateFilter(from, to) {
+    if (!from && !to) return { sql: '', params: [] };
+    const conditions = [];
+    const params = [];
+    if (from) { conditions.push(`e.session_id IN (SELECT id FROM sessions WHERE lp_id = e.lp_id AND started_at >= ?)`); params.push(from); }
+    if (to) { conditions.push(`e.session_id IN (SELECT id FROM sessions WHERE lp_id = e.lp_id AND started_at <= ?)`); params.push(to + ' 23:59:59'); }
+    return { sql: conditions.length ? ' AND ' + conditions.join(' AND ') : '', params };
+  }
+
+  getOverview(lpId, from, to) {
+    const df = this._dateFilter('s', from, to);
+
     const totalSessions = this.db.prepare(
-      'SELECT COUNT(*) as c FROM sessions WHERE lp_id = ?'
-    ).get(lpId).c;
+      `SELECT COUNT(*) as c FROM sessions s WHERE s.lp_id = ?${df.sql}`
+    ).get(lpId, ...df.params).c;
+
+    const edf = this._eventDateFilter(from, to);
 
     const totalCtaClicks = this.db.prepare(
-      "SELECT COUNT(*) as c FROM events WHERE lp_id = ? AND event_type = 'cta_click'"
-    ).get(lpId).c;
+      `SELECT COUNT(*) as c FROM events e WHERE e.lp_id = ? AND e.event_type = 'cta_click'${edf.sql}`
+    ).get(lpId, ...edf.params).c;
 
     const avgRow = this.db.prepare(`
       SELECT AVG(step_count) as avg_steps FROM (
-        SELECT session_id, COUNT(DISTINCT step_index) as step_count
-        FROM events WHERE lp_id = ? AND event_type = 'step_view'
-        GROUP BY session_id
+        SELECT e.session_id, COUNT(DISTINCT e.step_index) as step_count
+        FROM events e WHERE e.lp_id = ? AND e.event_type = 'step_view'${edf.sql}
+        GROUP BY e.session_id
       )
-    `).get(lpId);
+    `).get(lpId, ...edf.params);
     const avgStepsViewed = avgRow.avg_steps || 0;
 
     const durRow = this.db.prepare(`
       SELECT AVG(total_dwell) as avg_dur FROM (
-        SELECT session_id, SUM(json_extract(data, '$.duration_ms')) as total_dwell
-        FROM events WHERE lp_id = ? AND event_type = 'dwell'
-        GROUP BY session_id
+        SELECT e.session_id, SUM(json_extract(e.data, '$.duration_ms')) as total_dwell
+        FROM events e WHERE e.lp_id = ? AND e.event_type = 'dwell'${edf.sql}
+        GROUP BY e.session_id
       )
-    `).get(lpId);
+    `).get(lpId, ...edf.params);
     const avgSessionDuration = durRow.avg_dur || 0;
 
     const bounceSessions = this.db.prepare(`
       SELECT COUNT(*) as c FROM (
-        SELECT session_id, MAX(step_index) as max_step
-        FROM events WHERE lp_id = ? AND event_type = 'step_view'
-        GROUP BY session_id
+        SELECT e.session_id, MAX(e.step_index) as max_step
+        FROM events e WHERE e.lp_id = ? AND e.event_type = 'step_view'${edf.sql}
+        GROUP BY e.session_id
         HAVING max_step = 0
       )
-    `).get(lpId).c;
+    `).get(lpId, ...edf.params).c;
 
     const conversionRate = totalSessions > 0 ? (totalCtaClicks / totalSessions * 100) : 0;
     const bounceRate = totalSessions > 0 ? (bounceSessions / totalSessions * 100) : 0;
@@ -52,24 +74,26 @@ class AnalyticsService {
     };
   }
 
-  getStepMetrics(lpId) {
+  getStepMetrics(lpId, from, to) {
+    const edf = this._eventDateFilter(from, to);
+
     const views = this.db.prepare(`
-      SELECT step_index, COUNT(DISTINCT session_id) as view_count
-      FROM events WHERE lp_id = ? AND event_type = 'step_view'
-      GROUP BY step_index ORDER BY step_index
-    `).all(lpId);
+      SELECT e.step_index, COUNT(DISTINCT e.session_id) as view_count
+      FROM events e WHERE e.lp_id = ? AND e.event_type = 'step_view'${edf.sql}
+      GROUP BY e.step_index ORDER BY e.step_index
+    `).all(lpId, ...edf.params);
 
     const dwells = this.db.prepare(`
-      SELECT step_index, AVG(json_extract(data, '$.duration_ms')) as avg_dwell
-      FROM events WHERE lp_id = ? AND event_type = 'dwell'
-      GROUP BY step_index ORDER BY step_index
-    `).all(lpId);
+      SELECT e.step_index, AVG(json_extract(e.data, '$.duration_ms')) as avg_dwell
+      FROM events e WHERE e.lp_id = ? AND e.event_type = 'dwell'${edf.sql}
+      GROUP BY e.step_index ORDER BY e.step_index
+    `).all(lpId, ...edf.params);
 
     const clicks = this.db.prepare(`
-      SELECT step_index, COUNT(*) as click_count
-      FROM events WHERE lp_id = ? AND event_type = 'click'
-      GROUP BY step_index ORDER BY step_index
-    `).all(lpId);
+      SELECT e.step_index, COUNT(*) as click_count
+      FROM events e WHERE e.lp_id = ? AND e.event_type = 'click'${edf.sql}
+      GROUP BY e.step_index ORDER BY e.step_index
+    `).all(lpId, ...edf.params);
 
     const dwellMap = Object.fromEntries(dwells.map(d => [d.step_index, d.avg_dwell]));
     const clickMap = Object.fromEntries(clicks.map(c => [c.step_index, c.click_count]));
@@ -90,23 +114,24 @@ class AnalyticsService {
     return { steps };
   }
 
-  getHeatmap(lpId, stepIndex) {
+  getHeatmap(lpId, stepIndex, from, to) {
     const GRID_X = 50;
     const GRID_Y = 100;
+    const edf = this._eventDateFilter(from, to);
 
     const raw = this.db.prepare(`
       SELECT
-        CAST(ROUND(CAST(json_extract(data, '$.x') AS REAL) * ${GRID_X}) AS INTEGER) as grid_x,
-        CAST(ROUND(CAST(json_extract(data, '$.y') AS REAL) * ${GRID_Y}) AS INTEGER) as grid_y,
+        CAST(ROUND(CAST(json_extract(e.data, '$.x') AS REAL) * ${GRID_X}) AS INTEGER) as grid_x,
+        CAST(ROUND(CAST(json_extract(e.data, '$.y') AS REAL) * ${GRID_Y}) AS INTEGER) as grid_y,
         COUNT(*) as click_count
-      FROM events
-      WHERE lp_id = ? AND event_type = 'click' AND step_index = ?
+      FROM events e
+      WHERE e.lp_id = ? AND e.event_type = 'click' AND e.step_index = ?${edf.sql}
       GROUP BY grid_x, grid_y
-    `).all(lpId, stepIndex);
+    `).all(lpId, stepIndex, ...edf.params);
 
     const totalClicks = this.db.prepare(
-      "SELECT COUNT(*) as c FROM events WHERE lp_id = ? AND event_type = 'click' AND step_index = ?"
-    ).get(lpId, stepIndex).c;
+      `SELECT COUNT(*) as c FROM events e WHERE e.lp_id = ? AND e.event_type = 'click' AND e.step_index = ?${edf.sql}`
+    ).get(lpId, stepIndex, ...edf.params).c;
 
     return {
       clicks: raw.map(r => ({
@@ -119,30 +144,32 @@ class AnalyticsService {
     };
   }
 
-  getDwellHeatmap(lpId) {
+  getDwellHeatmap(lpId, from, to) {
+    const edf = this._eventDateFilter(from, to);
     const steps = this.db.prepare(`
-      SELECT step_index,
-        AVG(json_extract(data, '$.duration_ms')) as avg_dwell,
-        MAX(json_extract(data, '$.duration_ms')) as max_dwell,
-        MIN(json_extract(data, '$.duration_ms')) as min_dwell,
+      SELECT e.step_index,
+        AVG(json_extract(e.data, '$.duration_ms')) as avg_dwell,
+        MAX(json_extract(e.data, '$.duration_ms')) as max_dwell,
+        MIN(json_extract(e.data, '$.duration_ms')) as min_dwell,
         COUNT(*) as sample_count
-      FROM events WHERE lp_id = ? AND event_type = 'dwell'
-      GROUP BY step_index ORDER BY step_index
-    `).all(lpId);
+      FROM events e WHERE e.lp_id = ? AND e.event_type = 'dwell'${edf.sql}
+      GROUP BY e.step_index ORDER BY e.step_index
+    `).all(lpId, ...edf.params);
 
     return { steps };
   }
 
-  getFunnel(lpId) {
+  getFunnel(lpId, from, to) {
+    const edf = this._eventDateFilter(from, to);
     const stepViews = this.db.prepare(`
-      SELECT step_index, COUNT(DISTINCT session_id) as unique_sessions
-      FROM events WHERE lp_id = ? AND event_type = 'step_view'
-      GROUP BY step_index ORDER BY step_index
-    `).all(lpId);
+      SELECT e.step_index, COUNT(DISTINCT e.session_id) as unique_sessions
+      FROM events e WHERE e.lp_id = ? AND e.event_type = 'step_view'${edf.sql}
+      GROUP BY e.step_index ORDER BY e.step_index
+    `).all(lpId, ...edf.params);
 
     const ctaClicks = this.db.prepare(
-      "SELECT COUNT(DISTINCT session_id) as c FROM events WHERE lp_id = ? AND event_type = 'cta_click'"
-    ).get(lpId).c;
+      `SELECT COUNT(DISTINCT e.session_id) as c FROM events e WHERE e.lp_id = ? AND e.event_type = 'cta_click'${edf.sql}`
+    ).get(lpId, ...edf.params).c;
 
     const totalSessions = stepViews[0]?.unique_sessions || 0;
 
@@ -161,7 +188,8 @@ class AnalyticsService {
     return { steps };
   }
 
-  getSessions(lpId, limit = 50, offset = 0) {
+  getSessions(lpId, limit = 50, offset = 0, from, to) {
+    const df = this._dateFilter('s', from, to);
     const sessions = this.db.prepare(`
       SELECT s.id, s.viewport_width, s.viewport_height, s.started_at, s.referrer,
         COUNT(e.id) as event_count,
@@ -169,18 +197,18 @@ class AnalyticsService {
         SUM(CASE WHEN e.event_type = 'cta_click' THEN 1 ELSE 0 END) as cta_clicks
       FROM sessions s
       LEFT JOIN events e ON s.id = e.session_id
-      WHERE s.lp_id = ?
+      WHERE s.lp_id = ?${df.sql}
       GROUP BY s.id
       ORDER BY s.started_at DESC
       LIMIT ? OFFSET ?
-    `).all(lpId, limit, offset);
+    `).all(lpId, ...df.params, limit, offset);
 
-    const total = this.db.prepare('SELECT COUNT(*) as c FROM sessions WHERE lp_id = ?').get(lpId).c;
+    const total = this.db.prepare(`SELECT COUNT(*) as c FROM sessions s WHERE s.lp_id = ?${df.sql}`).get(lpId, ...df.params).c;
 
     return { sessions, total };
   }
 
-  getAttribution(lpId, dimension = 'utm_source') {
+  getAttribution(lpId, dimension = 'utm_source', from, to) {
     const allowed = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'referrer_domain'];
     if (!allowed.includes(dimension)) dimension = 'utm_source';
 
@@ -204,6 +232,7 @@ class AnalyticsService {
       labelExpr = `COALESCE(NULLIF(s.${dimension}, ''), '(direct)')`;
     }
 
+    const df = this._dateFilter('s', from, to);
     const rows = this.db.prepare(`
       SELECT
         ${labelExpr} as label,
@@ -212,10 +241,10 @@ class AnalyticsService {
         AVG(CASE WHEN e.event_type = 'step_view' THEN e.step_index ELSE NULL END) as avg_step
       FROM sessions s
       LEFT JOIN events e ON s.id = e.session_id
-      WHERE s.lp_id = ?
+      WHERE s.lp_id = ?${df.sql}
       GROUP BY label
       ORDER BY sessions DESC
-    `).all(lpId);
+    `).all(lpId, ...df.params);
 
     return rows.map(r => ({
       label: r.label,

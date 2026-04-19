@@ -6,12 +6,78 @@ let currentLpConfig = null;
 let currentTab = 'overview';
 let pollTimer = null;
 let heatmapRenderer = null;
+let dateRange = 'all'; // all, today, 7d, 30d, custom
+
+// 期間フィルターのクエリパラメータ生成
+function getDateQuery() {
+  const now = new Date();
+  let from = null, to = null;
+
+  switch (dateRange) {
+    case 'today':
+      from = now.toISOString().split('T')[0];
+      to = from;
+      break;
+    case '7d':
+      to = now.toISOString().split('T')[0];
+      from = new Date(now - 7 * 86400000).toISOString().split('T')[0];
+      break;
+    case '30d':
+      to = now.toISOString().split('T')[0];
+      from = new Date(now - 30 * 86400000).toISOString().split('T')[0];
+      break;
+    case 'custom':
+      from = document.getElementById('dateFrom').value || null;
+      to = document.getElementById('dateTo').value || null;
+      break;
+  }
+
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return params.toString() ? '&' + params.toString() : '';
+}
+
+function getPeriodLabel() {
+  switch (dateRange) {
+    case 'today': return '今日';
+    case '7d': return '過去7日間';
+    case '30d': return '過去30日間';
+    case 'custom': {
+      const f = document.getElementById('dateFrom').value;
+      const t = document.getElementById('dateTo').value;
+      return (f && t) ? `${f} 〜 ${t}` : '期間指定';
+    }
+    default: return '全期間';
+  }
+}
 
 // 初期化
 async function init() {
   await loadLpList();
   setupTabs();
+  setupDateFilter();
   startPolling();
+}
+
+// 期間フィルター初期化
+function setupDateFilter() {
+  document.querySelectorAll('.date-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      dateRange = btn.dataset.range;
+
+      const customEl = document.getElementById('dateCustom');
+      customEl.style.display = dateRange === 'custom' ? 'flex' : 'none';
+
+      if (dateRange !== 'custom') loadTabData();
+    });
+  });
+
+  // カスタム日付変更
+  document.getElementById('dateFrom').addEventListener('change', () => loadTabData());
+  document.getElementById('dateTo').addEventListener('change', () => loadTabData());
 }
 
 // LP一覧読み込み
@@ -87,7 +153,8 @@ async function loadTabData() {
 
 // 概要タブ
 async function loadOverview() {
-  const res = await fetch(`${API}/api/analytics/${currentLpId}/overview`);
+  const dq = getDateQuery();
+  const res = await fetch(`${API}/api/analytics/${currentLpId}/overview?_=1${dq}`);
   const data = await res.json();
 
   document.getElementById('metricSessions').textContent = data.totalSessions.toLocaleString();
@@ -96,6 +163,7 @@ async function loadOverview() {
   document.getElementById('metricSteps').textContent = data.avgStepsViewed;
   document.getElementById('metricDuration').textContent = (data.avgSessionDuration / 1000).toFixed(1) + '秒';
   document.getElementById('metricBounce').textContent = data.bounceRate + '%';
+  document.getElementById('metricPeriod').textContent = getPeriodLabel();
 
   // CVRの色
   const cvrEl = document.getElementById('metricCvr');
@@ -106,40 +174,45 @@ async function loadOverview() {
   bounceEl.className = 'value ' + (data.bounceRate < 30 ? 'success' : data.bounceRate < 50 ? 'warning' : 'danger');
 
   // ファネル簡易表示
-  const funnelRes = await fetch(`${API}/api/analytics/${currentLpId}/funnel`);
+  const funnelRes = await fetch(`${API}/api/analytics/${currentLpId}/funnel?_=1${dq}`);
   const funnelData = await funnelRes.json();
   renderFunnel(document.getElementById('overviewFunnel'), funnelData);
 
   // ステップ概要
-  const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps`);
+  const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps?_=1${dq}`);
   const stepsData = await stepsRes.json();
   renderStepTable(document.getElementById('overviewStepTable'), stepsData);
 }
 
 // ステップ分析タブ
 async function loadSteps() {
-  const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps`);
+  const dq = getDateQuery();
+  const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps?_=1${dq}`);
   const stepsData = await stepsRes.json();
   renderStepTable(document.getElementById('stepsTable'), stepsData);
 
-  const dwellRes = await fetch(`${API}/api/analytics/${currentLpId}/dwell-heatmap`);
+  const dwellRes = await fetch(`${API}/api/analytics/${currentLpId}/dwell-heatmap?_=1${dq}`);
   const dwellData = await dwellRes.json();
   renderDwellChart(document.getElementById('dwellChart'), dwellData);
 }
 
 // ヒートマップタブ
 async function loadHeatmap(stepIndex = 0) {
+  const dq = getDateQuery();
   // ステップ選択リスト構築
-  const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps`);
+  const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps?_=1${dq}`);
   const stepsData = await stepsRes.json();
 
   const listEl = document.getElementById('heatmapStepList');
   listEl.innerHTML = '';
 
+  // ステップサムネイルをサイドバーに表示
   stepsData.steps.forEach((step, i) => {
     const li = document.createElement('li');
     li.className = i === stepIndex ? 'active' : '';
+    const imgUrl = currentLpConfig?.steps?.[i]?.image || '';
     li.innerHTML = `
+      ${imgUrl ? `<img src="${imgUrl}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;flex-shrink:0;">` : ''}
       <span>Step ${step.stepIndex + 1}</span>
       <span class="click-count">${step.clickCount}回</span>
     `;
@@ -147,8 +220,18 @@ async function loadHeatmap(stepIndex = 0) {
     listEl.appendChild(li);
   });
 
+  // LP画像を背景に表示
+  const bgImage = document.getElementById('heatmapBgImage');
+  const stepImageUrl = currentLpConfig?.steps?.[stepIndex]?.image || '';
+  if (stepImageUrl) {
+    bgImage.src = stepImageUrl;
+    bgImage.style.display = 'block';
+  } else {
+    bgImage.style.display = 'none';
+  }
+
   // ヒートマップ描画
-  const heatRes = await fetch(`${API}/api/analytics/${currentLpId}/heatmap/${stepIndex}`);
+  const heatRes = await fetch(`${API}/api/analytics/${currentLpId}/heatmap/${stepIndex}?_=1${dq}`);
   const heatData = await heatRes.json();
 
   const canvas = document.getElementById('heatmapCanvas');
@@ -156,22 +239,25 @@ async function loadHeatmap(stepIndex = 0) {
     heatmapRenderer = new HeatmapRenderer(canvas);
   }
 
-  const bgGradient = currentLpConfig?.steps?.[stepIndex]?.bgGradient || null;
-  heatmapRenderer.render(heatData.clicks, bgGradient);
+  // 画像があれば透明背景、なければグラデーション
+  const bgGradient = stepImageUrl ? null : (currentLpConfig?.steps?.[stepIndex]?.bgGradient || null);
+  heatmapRenderer.render(heatData.clicks, stepImageUrl ? '__transparent__' : bgGradient);
 
   document.getElementById('heatmapTotalClicks').textContent = `総クリック数: ${heatData.totalClicks}`;
 }
 
 // ファネルタブ
 async function loadFunnel() {
-  const res = await fetch(`${API}/api/analytics/${currentLpId}/funnel`);
+  const dq = getDateQuery();
+  const res = await fetch(`${API}/api/analytics/${currentLpId}/funnel?_=1${dq}`);
   const data = await res.json();
   renderFunnel(document.getElementById('funnelChart'), data);
 }
 
 // セッションタブ
 async function loadSessions() {
-  const res = await fetch(`${API}/api/analytics/${currentLpId}/sessions?limit=50`);
+  const dq = getDateQuery();
+  const res = await fetch(`${API}/api/analytics/${currentLpId}/sessions?limit=50${dq}`);
   const data = await res.json();
 
   document.getElementById('sessionTotal').textContent = `${data.total}件中 ${data.sessions.length}件表示`;
@@ -180,8 +266,9 @@ async function loadSessions() {
 
 // 流入元分析タブ
 async function loadAttribution() {
+  const dq = getDateQuery();
   const dim = document.getElementById('attributionDimension').value;
-  const res = await fetch(`${API}/api/analytics/${currentLpId}/attribution?dimension=${dim}`);
+  const res = await fetch(`${API}/api/analytics/${currentLpId}/attribution?dimension=${dim}${dq}`);
   const rows = await res.json();
 
   const container = document.getElementById('attributionTable');

@@ -73,41 +73,52 @@ router.delete('/lps/:lpId', (req, res) => {
   res.json({ success: true });
 });
 
+// 期間パラメータ抽出ヘルパー
+function dateParams(query) {
+  return { from: query.from || null, to: query.to || null };
+}
+
 // 全体概要
 router.get('/analytics/:lpId/overview', (req, res) => {
   const svc = new AnalyticsService(req.db);
-  res.json(svc.getOverview(req.params.lpId));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getOverview(req.params.lpId, from, to));
 });
 
 // ステップ別メトリクス
 router.get('/analytics/:lpId/steps', (req, res) => {
   const svc = new AnalyticsService(req.db);
-  res.json(svc.getStepMetrics(req.params.lpId));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getStepMetrics(req.params.lpId, from, to));
 });
 
 // クリックヒートマップ
 router.get('/analytics/:lpId/heatmap/:stepIndex', (req, res) => {
   const svc = new AnalyticsService(req.db);
-  res.json(svc.getHeatmap(req.params.lpId, parseInt(req.params.stepIndex)));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getHeatmap(req.params.lpId, parseInt(req.params.stepIndex), from, to));
 });
 
 // 滞在時間ヒートマップ
 router.get('/analytics/:lpId/dwell-heatmap', (req, res) => {
   const svc = new AnalyticsService(req.db);
-  res.json(svc.getDwellHeatmap(req.params.lpId));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getDwellHeatmap(req.params.lpId, from, to));
 });
 
 // ファネル
 router.get('/analytics/:lpId/funnel', (req, res) => {
   const svc = new AnalyticsService(req.db);
-  res.json(svc.getFunnel(req.params.lpId));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getFunnel(req.params.lpId, from, to));
 });
 
 // 流入元分析
 router.get('/analytics/:lpId/attribution', (req, res) => {
   const svc = new AnalyticsService(req.db);
   const dimension = req.query.dimension || 'utm_source';
-  res.json(svc.getAttribution(req.params.lpId, dimension));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getAttribution(req.params.lpId, dimension, from, to));
 });
 
 // セッション一覧
@@ -115,7 +126,8 @@ router.get('/analytics/:lpId/sessions', (req, res) => {
   const svc = new AnalyticsService(req.db);
   const limit = parseInt(req.query.limit) || 50;
   const offset = parseInt(req.query.offset) || 0;
-  res.json(svc.getSessions(req.params.lpId, limit, offset));
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getSessions(req.params.lpId, limit, offset, from, to));
 });
 
 // 個別セッション詳細

@@ -16,6 +16,18 @@
   </h1>
   <div class="header-actions">
     <select class="lp-select" id="lpSelect"></select>
+    <div class="date-filter">
+      <button class="date-btn active" data-range="all">全期間</button>
+      <button class="date-btn" data-range="today">今日</button>
+      <button class="date-btn" data-range="7d">7日</button>
+      <button class="date-btn" data-range="30d">30日</button>
+      <button class="date-btn" data-range="custom">期間指定</button>
+    </div>
+    <div class="date-custom" id="dateCustom" style="display:none;">
+      <input type="date" id="dateFrom">
+      <span style="color:var(--text-muted);font-size:12px;">〜</span>
+      <input type="date" id="dateTo">
+    </div>
     <div class="update-indicator">
       <span class="dot"></span>
       <span id="lastUpdated">最終更新: --:--:--</span>
@@ -49,7 +61,7 @@
       <div class="metric-card">
         <div class="label">セッション数</div>
         <div class="value info" id="metricSessions">-</div>
-        <div class="sub">過去全期間</div>
+        <div class="sub" id="metricPeriod">過去全期間</div>
       </div>
       <div class="metric-card">
         <div class="label">CTAクリック</div>
@@ -137,6 +149,7 @@
           <ul class="heatmap-step-list" id="heatmapStepList"></ul>
         </div>
         <div class="heatmap-preview">
+          <img id="heatmapBgImage" class="heatmap-bg-image" style="display:none;" alt="">
           <canvas id="heatmapCanvas"></canvas>
         </div>
       </div>
