@@ -48,12 +48,6 @@
 <!-- 改善2: 残りステップカウントダウン -->
 <div class="step-remaining" id="stepRemaining"></div>
 
-<!-- 改善3: 閲覧中バッジ -->
-<div class="viewer-badge" id="viewerBadge">
-  <span class="viewer-dot"></span>
-  <span class="viewer-text" id="viewerText"></span>
-</div>
-
 <script src="/viewer/swipe-engine.js"></script>
 <script src="/viewer/tracker.js"></script>
 <script>
@@ -242,17 +236,6 @@ function fireConversion(pixels) {
     }
   }
   updateRemaining(0);
-
-  // ===== 改善3: 閲覧中人数バッジ =====
-  const viewerText = document.getElementById('viewerText');
-  let currentViewers = Math.floor(Math.random() * 6) + 3; // 3〜8人
-  function updateViewers() {
-    const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, +1
-    currentViewers = Math.max(2, Math.min(12, currentViewers + delta));
-    viewerText.textContent = `${currentViewers}人が閲覧中`;
-  }
-  updateViewers();
-  setInterval(updateViewers, 10000 + Math.random() * 5000);
 
   // イベント連携
   engine.on('stepChange', (data) => {
