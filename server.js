@@ -64,6 +64,16 @@ app.use('/uploads', express.static(uploadDir, {
   immutable: true
 }));
 
+// ヘルスチェック (Render ゼロダウンタイムデプロイ用)
+app.get('/health', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok', time: new Date().toISOString() });
+  } catch (e) {
+    res.status(503).json({ status: 'error', error: e.message });
+  }
+});
+
 // 公開API (認証不要)
 const trackRoutes = require('./routes/track');
 app.use('/api/track', trackRoutes);
