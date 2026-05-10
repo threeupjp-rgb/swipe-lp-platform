@@ -165,13 +165,49 @@ async function loadOverview() {
   document.getElementById('metricBounce').textContent = data.bounceRate + '%';
   document.getElementById('metricPeriod').textContent = getPeriodLabel();
 
-  // CVRの色
+  // CVR評価 (高いほど良い)
+  const cvr = data.conversionRate;
   const cvrEl = document.getElementById('metricCvr');
-  cvrEl.className = 'value ' + (data.conversionRate > 5 ? 'success' : data.conversionRate > 2 ? 'warning' : 'danger');
+  const cvrEval = document.getElementById('metricCvrEval');
+  if (cvr >= 8) {
+    cvrEl.className = 'value success';
+    cvrEval.className = 'metric-eval excellent';
+    cvrEval.textContent = '優秀';
+  } else if (cvr >= 5) {
+    cvrEl.className = 'value success';
+    cvrEval.className = 'metric-eval good';
+    cvrEval.textContent = '良好';
+  } else if (cvr >= 2) {
+    cvrEl.className = 'value warning';
+    cvrEval.className = 'metric-eval average';
+    cvrEval.textContent = '平均';
+  } else {
+    cvrEl.className = 'value danger';
+    cvrEval.className = 'metric-eval poor';
+    cvrEval.textContent = '要改善';
+  }
 
-  // バウンス率の色
+  // バウンス率評価 (低いほど良い)
+  const bounce = data.bounceRate;
   const bounceEl = document.getElementById('metricBounce');
-  bounceEl.className = 'value ' + (data.bounceRate < 30 ? 'success' : data.bounceRate < 50 ? 'warning' : 'danger');
+  const bounceEval = document.getElementById('metricBounceEval');
+  if (bounce < 30) {
+    bounceEl.className = 'value success';
+    bounceEval.className = 'metric-eval excellent';
+    bounceEval.textContent = '優秀';
+  } else if (bounce < 40) {
+    bounceEl.className = 'value success';
+    bounceEval.className = 'metric-eval good';
+    bounceEval.textContent = '良好';
+  } else if (bounce < 60) {
+    bounceEl.className = 'value warning';
+    bounceEval.className = 'metric-eval average';
+    bounceEval.textContent = '平均';
+  } else {
+    bounceEl.className = 'value danger';
+    bounceEval.className = 'metric-eval poor';
+    bounceEval.textContent = '要改善';
+  }
 
   // ファネル簡易表示
   const funnelRes = await fetch(`${API}/api/analytics/${currentLpId}/funnel?_=1${dq}`);
