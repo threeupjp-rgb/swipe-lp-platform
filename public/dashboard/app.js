@@ -80,8 +80,9 @@ function setupDateFilter() {
   document.getElementById('dateTo').addEventListener('change', () => loadTabData());
 }
 
-// LP一覧読み込み
-async function loadLpList() {
+// LP一覧読み込み (preserveSelection: true で現在選択中のLPを維持)
+let lpListChangeListenerAdded = false;
+async function loadLpList(preserveSelection = false) {
   const res = await fetch(`${API}/api/lps`);
   const lps = await res.json();
 
@@ -94,12 +95,18 @@ async function loadLpList() {
     select.appendChild(opt);
   });
 
-  if (lps.length > 0) {
+  if (preserveSelection && currentLpId) {
+    // 編集後など: 既存の選択を維持
+    select.value = currentLpId;
+  } else if (lps.length > 0) {
+    // 初回起動: 先頭のLPを選択
     currentLpId = lps[0].id;
     await loadLpDetail(currentLpId);
     loadTabData();
   }
 
+  if (lpListChangeListenerAdded) return;
+  lpListChangeListenerAdded = true;
   select.addEventListener('change', async () => {
     currentLpId = select.value;
     await loadLpDetail(currentLpId);
@@ -564,12 +571,9 @@ async function submitCreateLP() {
     }
 
     closeCreateLP();
-    await loadLpList();
-
-    // 作成したLPを選択
-    const select = document.getElementById('lpSelect');
-    select.value = data.id;
+    // 作成したLPを選択 (loadLpListより前にcurrentLpIdをセット)
     currentLpId = data.id;
+    await loadLpList(true);
     await loadLpDetail(data.id);
     loadTabData();
 
@@ -592,6 +596,7 @@ async function openEditLP() {
   const config = editLpData.config;
 
   document.getElementById('editName').value = editLpData.name;
+  document.getElementById('editSlug').value = editLpData.slug || '';
   document.getElementById('editCtaText').value = editLpData.cta_text || '';
   document.getElementById('editCtaUrl').value = editLpData.cta_url || '';
 
@@ -726,10 +731,19 @@ async function handleEditImageUpload(stepIndex, input) {
 
 async function submitEditLP() {
   const name = document.getElementById('editName').value.trim();
+  const slug = document.getElementById('editSlug').value.trim();
   const ctaText = document.getElementById('editCtaText').value.trim();
   const ctaUrl = document.getElementById('editCtaUrl').value.trim();
 
   if (!name) return alert('LP名を入力してください');
+  if (!slug) return alert('スラッグを入力してください');
+  if (!/^[a-z0-9-]+$/.test(slug)) return alert('スラッグは半角英数字とハイフンのみ使用できます');
+
+  // スラッグ変更時は警告
+  if (slug !== editLpData.slug) {
+    const confirmed = confirm(`スラッグを「${editLpData.slug}」→「${slug}」に変更します。\n\n旧URL（/lp/${editLpData.slug}）は404になります。配信中の広告URLが旧スラッグの場合、必ず差し替えてください。\n\n続行しますか？`);
+    if (!confirmed) return;
+  }
 
   const steps = editSteps.map(s => ({
     title: s.title || '',
@@ -751,12 +765,16 @@ async function submitEditLP() {
   if (googleLabel) pixels.googleConversionLabel = googleLabel;
   if (lineId) pixels.line = lineId;
 
+  // 編集中のLPを保持
+  const savedId = currentLpId;
+
   try {
     const res = await fetch(`/api/lps/${currentLpId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
+        slug,
         config: { direction: editDirection, steps, pixels },
         cta_text: ctaText || 'お問い合わせ',
         cta_url: ctaUrl || '#'
@@ -766,9 +784,7 @@ async function submitEditLP() {
     if (data.error) return alert(data.error);
 
     closeEditLP();
-    await loadLpList();
-    const select = document.getElementById('lpSelect');
-    select.value = currentLpId;
+    await loadLpList(true); // 編集中のLPを維持
     await loadLpDetail(currentLpId);
     loadTabData();
     alert('保存しました');

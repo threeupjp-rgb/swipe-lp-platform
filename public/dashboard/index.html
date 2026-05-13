@@ -320,6 +320,14 @@
           <input type="text" id="editName">
         </div>
         <div class="form-row">
+          <label>スラッグ (URL)</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--text-muted);font-size:13px;">/lp/</span>
+            <input type="text" id="editSlug" style="flex:1;" placeholder="例: spring-campaign">
+          </div>
+          <small style="display:block;color:#f59e0b;font-size:11px;margin-top:6px;">⚠ 変更すると、既存の広告URL（旧スラッグ）は404になります。配信中のキャンペーンがある場合は要注意。</small>
+        </div>
+        <div class="form-row">
           <label>スワイプ方向</label>
           <div style="display:flex;gap:8px;">
             <button class="dir-btn" data-dir="vertical" onclick="setEditDirection('vertical')">縦スワイプ</button>

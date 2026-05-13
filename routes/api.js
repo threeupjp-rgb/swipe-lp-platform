@@ -41,14 +41,24 @@ router.post('/lps', (req, res) => {
 
 // LP更新
 router.put('/lps/:lpId', (req, res) => {
-  const lp = req.db.prepare('SELECT id FROM lps WHERE id = ?').get(req.params.lpId);
+  const lp = req.db.prepare('SELECT id, slug FROM lps WHERE id = ?').get(req.params.lpId);
   if (!lp) return res.status(404).json({ error: 'LP not found' });
 
-  const { name, config, cta_text, cta_url } = req.body;
+  const { name, slug, config, cta_text, cta_url } = req.body;
   const updates = [];
   const params = [];
 
   if (name !== undefined) { updates.push('name = ?'); params.push(name); }
+  if (slug !== undefined && slug !== lp.slug) {
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return res.status(400).json({ error: 'スラッグは半角英数字とハイフンのみ使用できます' });
+    }
+    const existing = req.db.prepare('SELECT id FROM lps WHERE slug = ? AND id != ?').get(slug, req.params.lpId);
+    if (existing) {
+      return res.status(409).json({ error: 'このスラッグは既に他のLPで使用されています' });
+    }
+    updates.push('slug = ?'); params.push(slug);
+  }
   if (config !== undefined) { updates.push('config = ?'); params.push(JSON.stringify(config)); }
   if (cta_text !== undefined) { updates.push('cta_text = ?'); params.push(cta_text); }
   if (cta_url !== undefined) { updates.push('cta_url = ?'); params.push(cta_url); }
