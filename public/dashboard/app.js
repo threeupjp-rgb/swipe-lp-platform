@@ -407,6 +407,7 @@ function openCreateLP() {
   document.getElementById('createPixelTiktok').value = '';
   document.getElementById('createPixelGoogle').value = '';
   document.getElementById('createPixelGoogleLabel').value = '';
+  document.getElementById('createPixelGtm').value = '';
   document.getElementById('createPixelLine').value = '';
   renderStepsEditor();
   document.getElementById('createLpModal').classList.add('visible');
@@ -544,11 +545,13 @@ async function submitCreateLP() {
   const tiktokId = document.getElementById('createPixelTiktok').value.trim();
   const googleId = document.getElementById('createPixelGoogle').value.trim();
   const googleLabel = document.getElementById('createPixelGoogleLabel').value.trim();
+  const gtmId = document.getElementById('createPixelGtm').value.trim();
   const lineId = document.getElementById('createPixelLine').value.trim();
   if (metaId) pixels.meta = metaId;
   if (tiktokId) pixels.tiktok = tiktokId;
   if (googleId) pixels.google = googleId;
   if (googleLabel) pixels.googleConversionLabel = googleLabel;
+  if (gtmId) pixels.gtm = gtmId;
   if (lineId) pixels.line = lineId;
 
   try {
@@ -606,6 +609,7 @@ async function openEditLP() {
   document.getElementById('editPixelTiktok').value = pixels.tiktok || '';
   document.getElementById('editPixelGoogle').value = pixels.google || '';
   document.getElementById('editPixelGoogleLabel').value = pixels.googleConversionLabel || '';
+  document.getElementById('editPixelGtm').value = pixels.gtm || '';
   document.getElementById('editPixelLine').value = pixels.line || '';
 
   // 方向
@@ -758,11 +762,13 @@ async function submitEditLP() {
   const tiktokId = document.getElementById('editPixelTiktok').value.trim();
   const googleId = document.getElementById('editPixelGoogle').value.trim();
   const googleLabel = document.getElementById('editPixelGoogleLabel').value.trim();
+  const gtmId = document.getElementById('editPixelGtm').value.trim();
   const lineId = document.getElementById('editPixelLine').value.trim();
   if (metaId) pixels.meta = metaId;
   if (tiktokId) pixels.tiktok = tiktokId;
   if (googleId) pixels.google = googleId;
   if (googleLabel) pixels.googleConversionLabel = googleLabel;
+  if (gtmId) pixels.gtm = gtmId;
   if (lineId) pixels.line = lineId;
 
   // 編集中のLPを保持

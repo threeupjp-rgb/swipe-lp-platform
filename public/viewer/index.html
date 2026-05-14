@@ -92,6 +92,15 @@ function initPixels(pixels) {
     gtag('config', pixels.google);
   }
 
+  // Google Tag Manager (GTM)
+  if (pixels.gtm) {
+    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer',pixels.gtm);
+  }
+
   // LINE Tag
   if (pixels.line) {
     (function(g,d,o){g._ltq=g._ltq||[];g._lt=g._lt||function(){g._ltq.push(arguments)};
@@ -121,6 +130,10 @@ function fireConversion(pixels) {
   // LINE: conversion
   if (pixels.line && typeof _lt !== 'undefined') {
     _lt('send','cv',[pixels.line],['Conversion']);
+  }
+  // GTM: dataLayer に conversion イベントを push (GTM側でトリガー設定可能)
+  if (pixels.gtm && window.dataLayer) {
+    window.dataLayer.push({ event: 'cta_conversion', conversion_type: 'cta_click' });
   }
 }
 </script>
