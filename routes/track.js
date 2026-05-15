@@ -1,19 +1,35 @@
 const express = require('express');
 const router = express.Router();
 
+// Prepared Statement をモジュールレベルでキャッシュ (メモリリーク防止)
+let stmts = null;
+function getStmts(db) {
+  if (stmts) return stmts;
+  stmts = {
+    checkSession: db.prepare('SELECT id FROM sessions WHERE id = ?'),
+    insertSession: db.prepare(`
+      INSERT INTO sessions (id, lp_id, user_agent, viewport_width, viewport_height, referrer,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `),
+    insertEvent: db.prepare(`
+      INSERT INTO events (session_id, lp_id, event_type, step_index, data, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+  };
+  return stmts;
+}
+
 // セッション開始
 router.post('/session', (req, res) => {
   const { sessionId, lpId, userAgent, viewportWidth, viewportHeight, referrer,
     utm_source, utm_medium, utm_campaign, utm_content, utm_term } = req.body;
   if (!sessionId || !lpId) return res.status(400).json({ error: 'sessionId and lpId required' });
 
-  const existing = req.db.prepare('SELECT id FROM sessions WHERE id = ?').get(sessionId);
+  const s = getStmts(req.db);
+  const existing = s.checkSession.get(sessionId);
   if (!existing) {
-    req.db.prepare(`
-      INSERT INTO sessions (id, lp_id, user_agent, viewport_width, viewport_height, referrer,
-        utm_source, utm_medium, utm_campaign, utm_content, utm_term)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(sessionId, lpId, userAgent || '', viewportWidth || 0, viewportHeight || 0, referrer || '',
+    s.insertSession.run(sessionId, lpId, userAgent || '', viewportWidth || 0, viewportHeight || 0, referrer || '',
       utm_source || '', utm_medium || '', utm_campaign || '', utm_content || '', utm_term || '');
   }
   res.json({ ok: true });
@@ -26,21 +42,20 @@ router.post('/events', (req, res) => {
     return res.status(400).json({ error: 'sessionId, lpId, and events[] required' });
   }
 
-  const stmt = req.db.prepare(`
-    INSERT INTO events (session_id, lp_id, event_type, step_index, data, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  for (const evt of events) {
-    stmt.run(
-      sessionId,
-      lpId,
-      evt.type,
-      evt.stepIndex ?? null,
-      evt.data ? JSON.stringify(evt.data) : null,
-      evt.timestamp ? new Date(evt.timestamp).toISOString() : new Date().toISOString()
-    );
-  }
+  const s = getStmts(req.db);
+  const insertMany = req.db.transaction((items) => {
+    for (const evt of items) {
+      s.insertEvent.run(
+        sessionId,
+        lpId,
+        evt.type,
+        evt.stepIndex ?? null,
+        evt.data ? JSON.stringify(evt.data) : null,
+        evt.timestamp ? new Date(evt.timestamp).toISOString() : new Date().toISOString()
+      );
+    }
+  });
+  insertMany(events);
 
   res.json({ ok: true, count: events.length });
 });
@@ -55,13 +70,9 @@ router.post('/beacon', (req, res) => {
   const { sessionId, lpId, events } = body;
   if (!sessionId || !lpId || !Array.isArray(events)) return res.status(400).end();
 
-  const stmt = req.db.prepare(`
-    INSERT INTO events (session_id, lp_id, event_type, step_index, data, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
+  const s = getStmts(req.db);
   for (const evt of events) {
-    stmt.run(
+    s.insertEvent.run(
       sessionId,
       lpId,
       evt.type,
