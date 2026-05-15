@@ -5,6 +5,11 @@ const path = require('path');
 const crypto = require('crypto');
 const sharp = require('sharp');
 
+// Sharp のメモリ使用を抑制 (Starterプラン 512MB対策)
+sharp.cache(false);
+sharp.concurrency(1);
+sharp.simd(false);
+
 const UPLOAD_DIR = process.env.DATA_DIR
   ? path.join(process.env.DATA_DIR, 'uploads')
   : path.join(__dirname, '..', 'uploads');
@@ -139,12 +144,20 @@ function handleBinaryUpload(req, res, mimeType) {
 }
 
 // 既存画像の一括最適化 (POST /api/upload/optimize-existing)
+// バッチ処理 + 各画像処理後にメモリ解放を促す
 router.post('/optimize-existing', async (req, res) => {
+  // 同時実行ガード
+  if (global._optimizeRunning) {
+    return res.status(429).json({ error: '別の最適化処理が実行中です。完了までお待ちください。' });
+  }
+  global._optimizeRunning = true;
+
   try {
     const files = fs.readdirSync(UPLOAD_DIR);
     const results = [];
     let totalBefore = 0;
     let totalAfter = 0;
+    let processed = 0;
 
     for (const filename of files) {
       const filepath = path.join(UPLOAD_DIR, filename);
@@ -159,17 +172,16 @@ router.post('/optimize-existing', async (req, res) => {
       const before = stat.size;
       totalBefore += before;
 
-      // 300KB未満はスキップ（既に軽い）
-      if (before < 300 * 1024) {
+      // 500KB未満はスキップ（既に軽量）
+      if (before < 500 * 1024) {
         totalAfter += before;
         continue;
       }
 
       try {
-        const rawBuffer = fs.readFileSync(filepath);
+        let rawBuffer = fs.readFileSync(filepath);
         const { buffer } = await optimizeImage(rawBuffer, mime);
 
-        // 圧縮後の方が小さい場合のみ上書き（拡張子は維持してURL変えない）
         if (buffer.length < before) {
           fs.writeFileSync(filepath, buffer);
           totalAfter += buffer.length;
@@ -177,8 +189,16 @@ router.post('/optimize-existing', async (req, res) => {
         } else {
           totalAfter += before;
         }
+        rawBuffer = null;
       } catch (e) {
         results.push({ filename, error: e.message });
+      }
+
+      processed++;
+      // 5枚ごとにGCを促し、メモリスパイクを防ぐ
+      if (processed % 5 === 0) {
+        if (global.gc) global.gc();
+        await new Promise(r => setTimeout(r, 200));
       }
     }
 
@@ -186,11 +206,13 @@ router.post('/optimize-existing', async (req, res) => {
       processed: results.length,
       totalBefore: Math.round(totalBefore/1024) + 'KB',
       totalAfter: Math.round(totalAfter/1024) + 'KB',
-      savedTotal: Math.round((1 - totalAfter/totalBefore)*100) + '%',
+      savedTotal: totalBefore > 0 ? Math.round((1 - totalAfter/totalBefore)*100) + '%' : '0%',
       details: results
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  } finally {
+    global._optimizeRunning = false;
   }
 });
 
