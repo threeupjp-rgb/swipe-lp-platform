@@ -4,7 +4,7 @@
   "description": "SwipeLP Platform - スワイプ型LP作成 & 分析ダッシュボード",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node --max-old-space-size=400 server.js",
     "seed": "node seed.js"
   },
   "dependencies": {

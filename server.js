@@ -3,8 +3,21 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
 
+// sharp のプロセス全体メモリ抑制 (require だけで効くので早期に呼ぶ)
+try {
+  const sharp = require('sharp');
+  sharp.cache(false);
+  sharp.concurrency(1);
+} catch (e) {
+  console.warn('[MEM] sharp not installed, skipping memory tuning');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 起動時メモリログ
+const _startMem = process.memoryUsage();
+console.log(`[MEM] startup rss=${Math.round(_startMem.rss/1024/1024)}MB heap=${Math.round(_startMem.heapUsed/1024/1024)}MB`);
 
 // DB初期化 (Persistent Disk対応)
 const dataDir = process.env.DATA_DIR || path.join(__dirname, 'db');
@@ -13,6 +26,9 @@ const dbPath = path.join(dataDir, 'swipelp.db');
 const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
+db.exec('PRAGMA cache_size = -2000');   // SQLiteページキャッシュを2MBに制限
+db.exec('PRAGMA mmap_size = 0');         // mmap無効化 (RSS急増を防ぐ)
+db.exec('PRAGMA temp_store = FILE');     // 一時テーブルをディスクへ
 
 // スキーマ実行
 const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8');
@@ -26,10 +42,25 @@ for (const col of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'u
 // ミドルウェア
 const cors = require('cors');
 const compression = require('compression');
-app.use(compression()); // gzip圧縮 (画像以外のレスポンスサイズを大幅削減)
+// memLevel=1 で gzip ワークメモリを最小化 (デフォルト8 → ~256KB/req → ~32KB/req)
+// threshold=2048 で小さなレスポンスは圧縮しない
+app.use(compression({ memLevel: 1, threshold: 2048 }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.text({ limit: '1mb' }));
+
+// メモリ計測ミドルウェア: 1リクエストで heap が +30MB 超のものを警告ログ
+app.use((req, res, next) => {
+  const before = process.memoryUsage().heapUsed;
+  res.on('finish', () => {
+    const after = process.memoryUsage();
+    const deltaMB = Math.round((after.heapUsed - before) / 1024 / 1024);
+    if (deltaMB >= 30) {
+      console.warn(`[MEM] ${req.method} ${req.originalUrl} +${deltaMB}MB → rss=${Math.round(after.rss/1024/1024)}MB heap=${Math.round(after.heapUsed/1024/1024)}MB status=${res.statusCode}`);
+    }
+  });
+  next();
+});
 
 // Basic認証 (ダッシュボード・管理API保護)
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
@@ -70,7 +101,16 @@ app.use('/uploads', express.static(uploadDir, {
 app.get('/health', (req, res) => {
   try {
     db.prepare('SELECT 1').get();
-    res.json({ status: 'ok', time: new Date().toISOString() });
+    const m = process.memoryUsage();
+    res.json({
+      status: 'ok',
+      rss_mb: Math.round(m.rss / 1024 / 1024),
+      heap_used_mb: Math.round(m.heapUsed / 1024 / 1024),
+      heap_total_mb: Math.round(m.heapTotal / 1024 / 1024),
+      external_mb: Math.round(m.external / 1024 / 1024),
+      uptime_sec: Math.round(process.uptime()),
+      time: new Date().toISOString()
+    });
   } catch (e) {
     res.status(503).json({ status: 'error', error: e.message });
   }
@@ -102,6 +142,18 @@ app.get('/lp/:slug', (req, res) => {
 // ルートリダイレクト
 app.get('/', (req, res) => {
   res.redirect('/dashboard/');
+});
+
+// プロセス終了時にメモリ状況を出力 (OOM時の手がかり)
+process.on('SIGTERM', () => {
+  const m = process.memoryUsage();
+  console.warn(`[MEM] SIGTERM received rss=${Math.round(m.rss/1024/1024)}MB heap=${Math.round(m.heapUsed/1024/1024)}MB`);
+  process.exit(0);
+});
+process.on('uncaughtException', (err) => {
+  const m = process.memoryUsage();
+  console.error(`[MEM] uncaughtException rss=${Math.round(m.rss/1024/1024)}MB heap=${Math.round(m.heapUsed/1024/1024)}MB`, err);
+  process.exit(1);
 });
 
 app.listen(PORT, () => {
