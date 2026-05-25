@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const AnalyticsService = require('../services/analytics');
+const { checkAndNotify } = require('../services/alerts');
 
 // LP一覧
 router.get('/lps', (req, res) => {
-  const lps = req.db.prepare('SELECT id, name, slug, cta_text, created_at FROM lps ORDER BY created_at DESC').all();
+  const lps = req.db.prepare(`
+    SELECT id, name, slug, cta_text, created_at,
+      notify_enabled, notify_cvr_threshold, notify_min_sessions, notify_last_sent_at
+    FROM lps ORDER BY created_at DESC
+  `).all();
   res.json(lps);
 });
 
@@ -146,6 +151,69 @@ router.get('/analytics/sessions/:sessionId', (req, res) => {
   const detail = svc.getSessionDetail(req.params.sessionId);
   if (!detail) return res.status(404).json({ error: 'Session not found' });
   res.json(detail);
+});
+
+// 通知設定の取得
+router.get('/lps/:lpId/notify-settings', (req, res) => {
+  const row = req.db.prepare(`
+    SELECT notify_enabled, notify_cvr_threshold, notify_min_sessions, notify_last_sent_at
+    FROM lps WHERE id = ?
+  `).get(req.params.lpId);
+  if (!row) return res.status(404).json({ error: 'LP not found' });
+  res.json(row);
+});
+
+// 通知設定の更新
+router.patch('/lps/:lpId/notify-settings', (req, res) => {
+  const lp = req.db.prepare('SELECT id FROM lps WHERE id = ?').get(req.params.lpId);
+  if (!lp) return res.status(404).json({ error: 'LP not found' });
+
+  const { notify_enabled, notify_cvr_threshold, notify_min_sessions } = req.body;
+  const updates = [];
+  const params = [];
+
+  if (notify_enabled !== undefined) {
+    updates.push('notify_enabled = ?');
+    params.push(notify_enabled ? 1 : 0);
+  }
+  if (notify_cvr_threshold !== undefined) {
+    const v = parseFloat(notify_cvr_threshold);
+    if (isNaN(v) || v < 0 || v > 100) {
+      return res.status(400).json({ error: 'notify_cvr_threshold は 0-100 の数値' });
+    }
+    updates.push('notify_cvr_threshold = ?');
+    params.push(v);
+  }
+  if (notify_min_sessions !== undefined) {
+    const v = parseInt(notify_min_sessions, 10);
+    if (isNaN(v) || v < 1) {
+      return res.status(400).json({ error: 'notify_min_sessions は 1 以上の整数' });
+    }
+    updates.push('notify_min_sessions = ?');
+    params.push(v);
+  }
+
+  if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
+
+  params.push(req.params.lpId);
+  req.db.prepare(`UPDATE lps SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  res.json({ success: true });
+});
+
+// Cron Job 用: 全監視対象LPを判定して通知発射
+// Render Cron Job から basic認証で叩く想定 (basicAuth は server.js でマウント時に適用済み)
+router.post('/admin/check-alerts', async (req, res) => {
+  try {
+    const env = {
+      ALERT_WEBHOOK_URL: process.env.ALERT_WEBHOOK_URL,
+      ALERT_WEBHOOK_TOKEN: process.env.ALERT_WEBHOOK_TOKEN,
+    };
+    const result = await checkAndNotify(req.db, env);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('check-alerts error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 module.exports = router;

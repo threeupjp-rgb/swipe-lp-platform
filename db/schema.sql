@@ -6,6 +6,10 @@ CREATE TABLE IF NOT EXISTS lps (
     config JSON NOT NULL,
     cta_text TEXT DEFAULT 'お問い合わせ',
     cta_url TEXT DEFAULT '#',
+    notify_enabled INTEGER DEFAULT 0,
+    notify_cvr_threshold REAL DEFAULT 1.0,
+    notify_min_sessions INTEGER DEFAULT 50,
+    notify_last_sent_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

@@ -34,6 +34,7 @@
     </div>
     <button class="btn btn-ghost" onclick="refreshData()">更新</button>
     <a id="lpLink" href="#" target="_blank" class="btn btn-primary">LPを見る</a>
+    <button class="btn btn-ghost" id="notifyBtn" onclick="openNotifySettings()" title="反応低下アラート設定">🔔 監視</button>
     <button class="btn btn-ghost" onclick="openEditLP()">編集</button>
     <button class="btn btn-primary" style="background:#22c55e;" onclick="openCreateLP()">+ LP作成</button>
   </div>
@@ -397,6 +398,44 @@
           削除
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 反応低下アラート設定モーダル -->
+<div class="modal-overlay" id="notifyModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 style="font-size:15px;">🔔 反応低下アラート設定</h3>
+      <button class="modal-close" onclick="closeNotifySettings()">&times;</button>
+    </div>
+    <div class="create-form" style="max-height:none;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">
+        このLPの直近24時間のCVRが基準を下回ると、LINE Bot (AI秘書) で通知します。<br>
+        同じLPへの再通知は3日間は抑止されます。
+      </p>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:var(--text);">
+          <input type="checkbox" id="notifyEnabled" style="width:18px;height:18px;">
+          <span>このLPの監視を有効にする</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>CVR警告しきい値 (%)</label>
+        <input type="number" id="notifyCvrThreshold" step="0.1" min="0" max="100" value="1.0">
+        <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">CVRがこの値を下回ると警告 (例: 1.0)</small>
+      </div>
+      <div class="form-row">
+        <label>判定に必要な最低セッション数</label>
+        <input type="number" id="notifyMinSessions" min="1" value="50">
+        <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">この数のセッションが集まらないと判定しない (誤検知防止)</small>
+      </div>
+      <div id="notifyLastSentBox" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+        最終通知: <span id="notifyLastSent">-</span>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;" onclick="submitNotifySettings()">
+        保存する
+      </button>
     </div>
   </div>
 </div>

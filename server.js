@@ -39,6 +39,17 @@ for (const col of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'u
   try { db.exec(`ALTER TABLE sessions ADD COLUMN ${col} TEXT`); } catch {}
 }
 
+// マイグレーション: 通知設定列追加 (既存DBに列がない場合)
+const lpNotifyCols = [
+  ['notify_enabled', 'INTEGER DEFAULT 0'],
+  ['notify_cvr_threshold', 'REAL DEFAULT 1.0'],
+  ['notify_min_sessions', 'INTEGER DEFAULT 50'],
+  ['notify_last_sent_at', 'DATETIME'],
+];
+for (const [col, def] of lpNotifyCols) {
+  try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
+}
+
 // ミドルウェア
 const cors = require('cors');
 const compression = require('compression');

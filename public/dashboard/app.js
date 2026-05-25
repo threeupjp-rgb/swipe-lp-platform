@@ -123,6 +123,9 @@ async function loadLpDetail(lpId) {
   document.getElementById('lpName').textContent = lp.name;
   document.getElementById('lpLink').href = `/lp/${lp.slug}`;
   document.getElementById('lpLink').textContent = `/lp/${lp.slug}`;
+
+  // 監視ボタンの状態
+  updateNotifyButtonState(lp.notify_enabled === 1);
 }
 
 // タブ制御
@@ -810,6 +813,72 @@ async function deleteLP() {
     alert('削除しました');
   } catch (e) {
     alert('削除に失敗しました');
+  }
+}
+
+// ===== 反応低下アラート設定 =====
+async function openNotifySettings() {
+  if (!currentLpId) return alert('LPを選択してください');
+  try {
+    const res = await fetch(`${API}/api/lps/${currentLpId}/notify-settings`);
+    if (!res.ok) throw new Error('通知設定の取得に失敗しました');
+    const s = await res.json();
+    document.getElementById('notifyEnabled').checked = s.notify_enabled === 1;
+    document.getElementById('notifyCvrThreshold').value = s.notify_cvr_threshold ?? 1.0;
+    document.getElementById('notifyMinSessions').value = s.notify_min_sessions ?? 50;
+    const box = document.getElementById('notifyLastSentBox');
+    if (s.notify_last_sent_at) {
+      document.getElementById('notifyLastSent').textContent = new Date(s.notify_last_sent_at).toLocaleString('ja-JP');
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+    }
+    document.getElementById('notifyModal').classList.add('visible');
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function closeNotifySettings() {
+  document.getElementById('notifyModal').classList.remove('visible');
+}
+
+async function submitNotifySettings() {
+  if (!currentLpId) return;
+  const payload = {
+    notify_enabled: document.getElementById('notifyEnabled').checked,
+    notify_cvr_threshold: parseFloat(document.getElementById('notifyCvrThreshold').value),
+    notify_min_sessions: parseInt(document.getElementById('notifyMinSessions').value, 10),
+  };
+  try {
+    const res = await fetch(`${API}/api/lps/${currentLpId}/notify-settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) return alert(data.error);
+    closeNotifySettings();
+    updateNotifyButtonState(payload.notify_enabled);
+    alert('保存しました');
+  } catch (e) {
+    alert('保存に失敗しました: ' + e.message);
+  }
+}
+
+function updateNotifyButtonState(enabled) {
+  const btn = document.getElementById('notifyBtn');
+  if (!btn) return;
+  if (enabled) {
+    btn.textContent = '🔔 監視中';
+    btn.style.background = '#22c55e';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#22c55e';
+  } else {
+    btn.textContent = '🔔 監視';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
   }
 }
 
