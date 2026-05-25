@@ -411,7 +411,7 @@
     </div>
     <div class="create-form" style="max-height:none;">
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">
-        このLPの直近24時間のCVRが基準を下回ると、LINE Bot (AI秘書) で通知します。<br>
+        このLPの<strong>直近3日間</strong>のCVRが基準を下回ると、LINE Bot (AI秘書) で通知します。<br>
         同じLPへの再通知は3日間は抑止されます。
       </p>
       <div class="form-row">
@@ -426,9 +426,9 @@
         <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">CVRがこの値を下回ると警告 (例: 1.0)</small>
       </div>
       <div class="form-row">
-        <label>判定に必要な最低セッション数</label>
+        <label>判定に必要な最低セッション数 (3日間合計)</label>
         <input type="number" id="notifyMinSessions" min="1" value="50">
-        <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">この数のセッションが集まらないと判定しない (誤検知防止)</small>
+        <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">3日間でこの数のセッションが集まらないと判定しない (誤検知防止)</small>
       </div>
       <div id="notifyLastSentBox" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-muted);margin-bottom:12px;">
         最終通知: <span id="notifyLastSent">-</span>

@@ -3,8 +3,8 @@
 
 const AnalyticsService = require('./analytics');
 
-// 集計対象期間 (日数)
-const LOOKBACK_DAYS = 1;
+// 集計対象期間 (日数) - 3日間でCVRを評価することで、1日のブレに影響されにくくする
+const LOOKBACK_DAYS = 3;
 // 同じLPへの再通知を抑止する最低間隔 (日数)
 const COOLDOWN_DAYS = 3;
 
@@ -96,7 +96,7 @@ function formatAlertMessage(lp, overview) {
     `📄 ${lp.name}`,
     `🔗 /lp/${lp.slug}`,
     ``,
-    `直近24時間:`,
+    `直近${LOOKBACK_DAYS}日間:`,
     `  セッション: ${overview.totalSessions}`,
     `  CVR: ${overview.conversionRate}% (基準 ${lp.notify_cvr_threshold}%)`,
     `  CTA: ${overview.totalCtaClicks}回`,
