@@ -28,8 +28,20 @@
 <button class="swipe-nav prev" id="navPrev">&#8249;</button>
 <button class="swipe-nav next" id="navNext">&#8250;</button>
 
-<!-- CTAボタン -->
-<button class="swipe-cta" id="ctaBtn">お問い合わせ</button>
+<!-- CTAボタン (sticky bottom 全幅 + マイクロコピー) -->
+<div class="cta-wrapper" id="ctaWrapper">
+  <button class="swipe-cta" id="ctaBtn">お問い合わせ</button>
+  <div class="cta-microcopy" id="ctaMicrocopy" style="display:none;"></div>
+</div>
+
+<!-- 終端到達時の大型CTA (最終ステップで表示) -->
+<div class="cta-final" id="ctaFinal">
+  <div class="cta-final-card">
+    <div class="cta-final-headline" id="ctaFinalHeadline">最後まで見ていただきありがとうございます</div>
+    <button class="cta-final-btn" id="ctaFinalBtn">今すぐ応募する</button>
+    <div class="cta-final-microcopy" id="ctaFinalMicrocopy" style="display:none;"></div>
+  </div>
+</div>
 
 <!-- スワイプヒント（テキスト版） -->
 <div class="swipe-hint" id="swipeHint">
@@ -162,9 +174,70 @@ function fireConversion(pixels) {
   const isVertical = direction === 'vertical';
   document.body.classList.add(`dir-${direction}`);
 
+  // ===== CTA カラープリセット =====
+  const CTA_COLOR_PRESETS = {
+    'line-green': { primary: '#06C755', secondary: '#00b848' },
+    'pink':       { primary: '#FF6B9D', secondary: '#FF4778' },
+    'coral':      { primary: '#FF8B7A', secondary: '#FF6B5C' },
+    'red':        { primary: '#FF4757', secondary: '#E63946' },
+    'orange':     { primary: '#FF6348', secondary: '#FF4500' },
+    'blue':       { primary: '#4A90E2', secondary: '#357ABD' },
+    'purple':     { primary: '#A855F7', secondary: '#9333EA' },
+    'gold':       { primary: '#D4AF37', secondary: '#B8860B' },
+  };
+  function hexToRgba(hex, alpha) {
+    const m = String(hex || '').match(/^#?([0-9a-f]{6})$/i);
+    if (!m) return `rgba(6,199,85,${alpha})`;
+    const num = parseInt(m[1], 16);
+    return `rgba(${(num>>16)&0xff},${(num>>8)&0xff},${num&0xff},${alpha})`;
+  }
+  function darkenHex(hex, amount) {
+    const m = String(hex || '').match(/^#?([0-9a-f]{6})$/i);
+    if (!m) return hex;
+    const num = parseInt(m[1], 16);
+    const r = Math.max(0, Math.floor(((num>>16)&0xff) * (1 - amount)));
+    const g = Math.max(0, Math.floor(((num>>8)&0xff) * (1 - amount)));
+    const b = Math.max(0, Math.floor((num&0xff) * (1 - amount)));
+    return `#${((r<<16)|(g<<8)|b).toString(16).padStart(6, '0')}`;
+  }
+  (function applyCtaColor() {
+    let primary, secondary;
+    if (lp.cta_color === 'custom' && lp.cta_color_custom) {
+      primary = lp.cta_color_custom;
+      secondary = darkenHex(primary, 0.15);
+    } else {
+      const preset = CTA_COLOR_PRESETS[lp.cta_color] || CTA_COLOR_PRESETS['line-green'];
+      primary = preset.primary;
+      secondary = preset.secondary;
+    }
+    const root = document.documentElement;
+    root.style.setProperty('--cta-primary', primary);
+    root.style.setProperty('--cta-secondary', secondary);
+    root.style.setProperty('--cta-glow', hexToRgba(primary, 0.5));
+    root.style.setProperty('--cta-glow-strong', hexToRgba(primary, 0.75));
+  })();
+
   // CTA設定
   const ctaBtn = document.getElementById('ctaBtn');
   ctaBtn.textContent = lp.cta_text || 'お問い合わせ';
+
+  // マイクロコピー (sticky CTAの下)
+  const microcopyEl = document.getElementById('ctaMicrocopy');
+  if (lp.cta_microcopy && lp.cta_microcopy.trim()) {
+    microcopyEl.textContent = lp.cta_microcopy;
+    microcopyEl.style.display = '';
+  }
+
+  // 終端大型CTA
+  const ctaFinal = document.getElementById('ctaFinal');
+  const ctaFinalBtn = document.getElementById('ctaFinalBtn');
+  const ctaFinalMicrocopy = document.getElementById('ctaFinalMicrocopy');
+  const showFinalLarge = lp.cta_show_final_large !== 0; // デフォルト ON
+  ctaFinalBtn.textContent = lp.cta_text || 'お問い合わせ';
+  if (lp.cta_microcopy && lp.cta_microcopy.trim()) {
+    ctaFinalMicrocopy.textContent = lp.cta_microcopy;
+    ctaFinalMicrocopy.style.display = '';
+  }
 
   // スワイプエンジン初期化
   const container = document.getElementById('swipeContainer');
@@ -260,6 +333,13 @@ function fireConversion(pixels) {
     const hint = document.getElementById('swipeHint');
     if (hint) hint.style.display = 'none';
     hideGesture();
+
+    // 最終ステップ到達時: 大型CTAをオーバーレイ表示
+    if (showFinalLarge && data.to === lp.config.steps.length - 1) {
+      ctaFinal.classList.add('visible');
+    } else {
+      ctaFinal.classList.remove('visible');
+    }
   });
 
   // クリックトラッキング
@@ -270,14 +350,16 @@ function fireConversion(pixels) {
     }
   });
 
-  // CTAクリック
-  ctaBtn.addEventListener('click', () => {
+  // CTAクリック (sticky / 終端大型 共通)
+  function handleCtaClick() {
     tracker.trackCtaClick(engine.getCurrentIndex());
     fireConversion(lp.config.pixels || {});
     if (lp.cta_url && lp.cta_url !== '#') {
       setTimeout(() => { window.open(lp.cta_url, '_blank'); }, 100);
     }
-  });
+  }
+  ctaBtn.addEventListener('click', handleCtaClick);
+  ctaFinalBtn.addEventListener('click', handleCtaClick);
 
   // ナビ矢印
   document.getElementById('navPrev').addEventListener('click', (e) => {

@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS lps (
     notify_cvr_threshold REAL DEFAULT 1.0,
     notify_min_sessions INTEGER DEFAULT 50,
     notify_last_sent_at DATETIME,
+    cta_microcopy TEXT,
+    cta_color TEXT DEFAULT 'line-green',
+    cta_color_custom TEXT,
+    cta_show_final_large INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

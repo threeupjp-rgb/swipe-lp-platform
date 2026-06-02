@@ -23,12 +23,12 @@ router.get('/lps/:lpId', (req, res) => {
 
 // LP新規作成
 router.post('/lps', (req, res) => {
-  const { name, slug, config, cta_text, cta_url } = req.body;
+  const { name, slug, config, cta_text, cta_url,
+    cta_microcopy, cta_color, cta_color_custom, cta_show_final_large } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
 
-  // slug重複チェック
   const existing = req.db.prepare('SELECT id FROM lps WHERE slug = ?').get(slug);
   if (existing) {
     return res.status(409).json({ error: 'このスラッグは既に使われています' });
@@ -37,9 +37,17 @@ router.post('/lps', (req, res) => {
   const crypto = require('crypto');
   const id = crypto.randomUUID();
   req.db.prepare(`
-    INSERT INTO lps (id, name, slug, config, cta_text, cta_url)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, name, slug, JSON.stringify(config), cta_text || 'お問い合わせ', cta_url || '#');
+    INSERT INTO lps (id, name, slug, config, cta_text, cta_url,
+      cta_microcopy, cta_color, cta_color_custom, cta_show_final_large)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, name, slug, JSON.stringify(config),
+    cta_text || 'お問い合わせ', cta_url || '#',
+    cta_microcopy || null,
+    cta_color || 'line-green',
+    cta_color_custom || null,
+    cta_show_final_large === false ? 0 : 1
+  );
 
   res.json({ id, slug, url: `/lp/${slug}` });
 });
@@ -49,7 +57,8 @@ router.put('/lps/:lpId', (req, res) => {
   const lp = req.db.prepare('SELECT id, slug FROM lps WHERE id = ?').get(req.params.lpId);
   if (!lp) return res.status(404).json({ error: 'LP not found' });
 
-  const { name, slug, config, cta_text, cta_url } = req.body;
+  const { name, slug, config, cta_text, cta_url,
+    cta_microcopy, cta_color, cta_color_custom, cta_show_final_large } = req.body;
   const updates = [];
   const params = [];
 
@@ -67,6 +76,10 @@ router.put('/lps/:lpId', (req, res) => {
   if (config !== undefined) { updates.push('config = ?'); params.push(JSON.stringify(config)); }
   if (cta_text !== undefined) { updates.push('cta_text = ?'); params.push(cta_text); }
   if (cta_url !== undefined) { updates.push('cta_url = ?'); params.push(cta_url); }
+  if (cta_microcopy !== undefined) { updates.push('cta_microcopy = ?'); params.push(cta_microcopy || null); }
+  if (cta_color !== undefined) { updates.push('cta_color = ?'); params.push(cta_color || 'line-green'); }
+  if (cta_color_custom !== undefined) { updates.push('cta_color_custom = ?'); params.push(cta_color_custom || null); }
+  if (cta_show_final_large !== undefined) { updates.push('cta_show_final_large = ?'); params.push(cta_show_final_large ? 1 : 0); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 

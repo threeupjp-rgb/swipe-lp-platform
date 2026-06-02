@@ -50,6 +50,17 @@ for (const [col, def] of lpNotifyCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
 }
 
+// マイグレーション: CTA カスタマイズ列追加
+const lpCtaCols = [
+  ['cta_microcopy', 'TEXT'],
+  ['cta_color', "TEXT DEFAULT 'line-green'"],
+  ['cta_color_custom', 'TEXT'],
+  ['cta_show_final_large', 'INTEGER DEFAULT 1'],
+];
+for (const [col, def] of lpCtaCols) {
+  try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
+}
+
 // ミドルウェア
 const cors = require('cors');
 const compression = require('compression');

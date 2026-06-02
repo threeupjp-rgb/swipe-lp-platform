@@ -169,87 +169,157 @@ body.dir-vertical { touch-action: pan-x; }
   border-radius: 0 2px 2px 0;
 }
 
-/* CTAボタン */
-.swipe-cta {
+/* CTA色プリセット (JSで :root に --cta-* を上書きして切り替え) */
+:root {
+  --cta-primary: #06C755;
+  --cta-secondary: #00b848;
+  --cta-glow: rgba(6, 199, 85, 0.5);
+  --cta-glow-strong: rgba(6, 199, 85, 0.75);
+}
+
+/* CTA ラッパー: sticky bottom 全幅 + safe-area 対応 */
+.cta-wrapper {
   position: fixed;
-  bottom: 28px;
-  left: 0;
-  right: 0;
-  width: fit-content;
-  margin: 0 auto;
+  left: 16px;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   z-index: 100;
-  background: linear-gradient(135deg, #06C755, #00b848, #06C755);
-  background-size: 200% 200%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none; /* 子要素のみ受ける */
+}
+.cta-wrapper > * { pointer-events: auto; }
+
+/* CTAボタン (sticky 全幅) */
+.swipe-cta {
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(135deg, var(--cta-primary), var(--cta-secondary));
   color: #fff;
   border: none;
-  border-radius: 50px;
-  padding: 16px 48px;
+  border-radius: 16px;
+  padding: 18px 24px;
   font-size: 17px;
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
-  box-shadow:
-    0 4px 20px rgba(6, 199, 85, 0.5),
-    0 0 0 0 rgba(6, 199, 85, 0.4);
-  transition: transform 0.15s ease;
-  animation: ctaBounce 2s ease-in-out infinite, ctaGlow 2.5s ease-in-out infinite, ctaShimmer 3s ease infinite;
+  box-shadow: 0 6px 20px var(--cta-glow);
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  animation: ctaPulse 2.4s ease-in-out infinite;
   white-space: nowrap;
-  letter-spacing: 1px;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  position: relative;
   overflow: hidden;
 }
 
-/* ボタンの光沢エフェクト */
-.swipe-cta::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-  animation: ctaSweep 2.5s ease-in-out infinite;
-}
-
 .swipe-cta:active {
-  transform: scale(0.93);
+  transform: scale(0.97);
+  box-shadow: 0 3px 12px var(--cta-glow);
 }
 
-/* バウンス */
-@keyframes ctaBounce {
-  0%, 100% { transform: translateY(0); }
-  15% { transform: translateY(-5px); }
-  30% { transform: translateY(0); }
-  45% { transform: translateY(-3px); }
-  60% { transform: translateY(0); }
+/* マイクロコピー (CTA直下の安心要素) */
+.cta-microcopy {
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  text-align: center;
+  padding: 4px 8px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+  max-width: 480px;
 }
 
-/* 光る波紋エフェクト */
-@keyframes ctaGlow {
+/* シンプルなpulseアニメ (1種類のみ、控えめに) */
+@keyframes ctaPulse {
   0%, 100% {
-    box-shadow:
-      0 4px 20px rgba(6, 199, 85, 0.5),
-      0 0 0 0 rgba(6, 199, 85, 0.4);
+    transform: scale(1);
+    box-shadow: 0 6px 20px var(--cta-glow);
   }
   50% {
-    box-shadow:
-      0 6px 28px rgba(6, 199, 85, 0.7),
-      0 0 0 10px rgba(6, 199, 85, 0);
+    transform: scale(1.025);
+    box-shadow: 0 8px 28px var(--cta-glow-strong);
   }
 }
 
-/* グラデーション移動 */
-@keyframes ctaShimmer {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* 終端到達時の大型CTA (最終ステップで表示するオーバーレイ) */
+.cta-final {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px calc(env(safe-area-inset-bottom, 0px) + 32px);
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,0.35) 35%,
+    rgba(0,0,0,0.75) 100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.cta-final.visible {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+.cta-final.visible .cta-final-card {
+  animation: ctaFinalRise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* 光沢スイープ */
-@keyframes ctaSweep {
-  0%, 60% { left: -100%; }
-  80% { left: 100%; }
-  100% { left: 100%; }
+.cta-final-card {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+}
+
+.cta-final-headline {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+
+.cta-final-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--cta-primary), var(--cta-secondary));
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  padding: 22px 24px;
+  font-size: 19px;
+  font-weight: 900;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 28px var(--cta-glow-strong);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  letter-spacing: 0.5px;
+  animation: ctaPulse 2.4s ease-in-out infinite;
+  transition: transform 0.12s ease;
+}
+.cta-final-btn:active {
+  transform: scale(0.97);
+}
+
+.cta-final-microcopy {
+  color: rgba(255,255,255,0.92);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+  font-size: 13px;
+}
+
+@keyframes ctaFinalRise {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* スワイプヒント（初回表示） */

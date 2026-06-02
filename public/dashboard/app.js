@@ -406,6 +406,11 @@ function openCreateLP() {
   document.getElementById('createSlug').value = '';
   document.getElementById('createCtaText').value = '';
   document.getElementById('createCtaUrl').value = '';
+  document.getElementById('createCtaColor').value = 'line-green';
+  document.getElementById('createCtaColorCustom').value = '#06C755';
+  document.getElementById('createCtaCustomRow').style.display = 'none';
+  document.getElementById('createCtaMicrocopy').value = '';
+  document.getElementById('createCtaShowFinalLarge').checked = true;
   document.getElementById('createPixelMeta').value = '';
   document.getElementById('createPixelTiktok').value = '';
   document.getElementById('createPixelGoogle').value = '';
@@ -414,6 +419,16 @@ function openCreateLP() {
   document.getElementById('createPixelLine').value = '';
   renderStepsEditor();
   document.getElementById('createLpModal').classList.add('visible');
+}
+
+function toggleCreateCtaCustom() {
+  const sel = document.getElementById('createCtaColor').value;
+  document.getElementById('createCtaCustomRow').style.display = sel === 'custom' ? '' : 'none';
+}
+
+function toggleEditCtaCustom() {
+  const sel = document.getElementById('editCtaColor').value;
+  document.getElementById('editCtaCustomRow').style.display = sel === 'custom' ? '' : 'none';
 }
 
 function closeCreateLP() {
@@ -557,6 +572,11 @@ async function submitCreateLP() {
   if (gtmId) pixels.gtm = gtmId;
   if (lineId) pixels.line = lineId;
 
+  const ctaColor = document.getElementById('createCtaColor').value;
+  const ctaColorCustom = ctaColor === 'custom' ? document.getElementById('createCtaColorCustom').value : null;
+  const ctaMicrocopy = document.getElementById('createCtaMicrocopy').value.trim();
+  const ctaShowFinalLarge = document.getElementById('createCtaShowFinalLarge').checked;
+
   try {
     const res = await fetch('/api/lps', {
       method: 'POST',
@@ -566,7 +586,11 @@ async function submitCreateLP() {
         slug,
         config: { direction: createDirection, steps, pixels },
         cta_text: ctaText || 'お問い合わせ',
-        cta_url: ctaUrl || '#'
+        cta_url: ctaUrl || '#',
+        cta_color: ctaColor,
+        cta_color_custom: ctaColorCustom,
+        cta_microcopy: ctaMicrocopy || null,
+        cta_show_final_large: ctaShowFinalLarge
       })
     });
     const data = await res.json();
@@ -605,6 +629,14 @@ async function openEditLP() {
   document.getElementById('editSlug').value = editLpData.slug || '';
   document.getElementById('editCtaText').value = editLpData.cta_text || '';
   document.getElementById('editCtaUrl').value = editLpData.cta_url || '';
+
+  // CTA カラー & マイクロコピー
+  const ctaColor = editLpData.cta_color || 'line-green';
+  document.getElementById('editCtaColor').value = ctaColor;
+  document.getElementById('editCtaColorCustom').value = editLpData.cta_color_custom || '#06C755';
+  document.getElementById('editCtaCustomRow').style.display = ctaColor === 'custom' ? '' : 'none';
+  document.getElementById('editCtaMicrocopy').value = editLpData.cta_microcopy || '';
+  document.getElementById('editCtaShowFinalLarge').checked = editLpData.cta_show_final_large !== 0;
 
   // ピクセル
   const pixels = config.pixels || {};
@@ -777,6 +809,11 @@ async function submitEditLP() {
   // 編集中のLPを保持
   const savedId = currentLpId;
 
+  const ctaColor = document.getElementById('editCtaColor').value;
+  const ctaColorCustom = ctaColor === 'custom' ? document.getElementById('editCtaColorCustom').value : null;
+  const ctaMicrocopy = document.getElementById('editCtaMicrocopy').value.trim();
+  const ctaShowFinalLarge = document.getElementById('editCtaShowFinalLarge').checked;
+
   try {
     const res = await fetch(`/api/lps/${currentLpId}`, {
       method: 'PUT',
@@ -786,7 +823,11 @@ async function submitEditLP() {
         slug,
         config: { direction: editDirection, steps, pixels },
         cta_text: ctaText || 'お問い合わせ',
-        cta_url: ctaUrl || '#'
+        cta_url: ctaUrl || '#',
+        cta_color: ctaColor,
+        cta_color_custom: ctaColorCustom,
+        cta_microcopy: ctaMicrocopy || null,
+        cta_show_final_large: ctaShowFinalLarge
       })
     });
     const data = await res.json();

@@ -264,11 +264,41 @@
         <h4 class="form-section-title">CTAボタン</h4>
         <div class="form-row">
           <label>ボタンテキスト</label>
-          <input type="text" id="createCtaText" placeholder="今すぐ申し込む">
+          <input type="text" id="createCtaText" placeholder="例: 今すぐLINEで応募 →">
         </div>
         <div class="form-row">
           <label>遷移先URL</label>
           <input type="text" id="createCtaUrl" placeholder="https://example.com/apply">
+        </div>
+        <div class="form-row">
+          <label>CTAカラー</label>
+          <select id="createCtaColor" onchange="toggleCreateCtaCustom()">
+            <option value="line-green">LINEグリーン (LINE登録向け)</option>
+            <option value="pink">ピンク (女性ターゲット)</option>
+            <option value="coral">コーラル (女性ターゲット)</option>
+            <option value="red">レッド (緊急感・男性向け)</option>
+            <option value="orange">オレンジ (アクション・男性向け)</option>
+            <option value="blue">ブルー (信頼性・士業)</option>
+            <option value="purple">パープル (高級感)</option>
+            <option value="gold">ゴールド (プレミアム)</option>
+            <option value="custom">カスタム (色を指定)</option>
+          </select>
+        </div>
+        <div class="form-row" id="createCtaCustomRow" style="display:none;">
+          <label>カスタム色 (Hex)</label>
+          <input type="color" id="createCtaColorCustom" value="#06C755" style="width:64px;height:40px;padding:2px;">
+        </div>
+        <div class="form-row">
+          <label>マイクロコピー (CTA下の小さな安心要素)</label>
+          <input type="text" id="createCtaMicrocopy" placeholder="例: ※登録無料・強引な勧誘なし">
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">空欄なら非表示。CVR+3〜8%</small>
+        </div>
+        <div class="form-row">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);">
+            <input type="checkbox" id="createCtaShowFinalLarge" style="width:18px;height:18px;" checked>
+            <span>最終ステップで大型CTAをオーバーレイ表示</span>
+          </label>
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;margin-left:26px;">最後まで読んだユーザーに見逃させないCTA</small>
         </div>
       </div>
 
@@ -353,11 +383,41 @@
         <h4 class="form-section-title">CTAボタン</h4>
         <div class="form-row">
           <label>ボタンテキスト</label>
-          <input type="text" id="editCtaText">
+          <input type="text" id="editCtaText" placeholder="例: 今すぐLINEで応募 →">
         </div>
         <div class="form-row">
           <label>遷移先URL</label>
           <input type="text" id="editCtaUrl">
+        </div>
+        <div class="form-row">
+          <label>CTAカラー</label>
+          <select id="editCtaColor" onchange="toggleEditCtaCustom()">
+            <option value="line-green">LINEグリーン (LINE登録向け)</option>
+            <option value="pink">ピンク (女性ターゲット)</option>
+            <option value="coral">コーラル (女性ターゲット)</option>
+            <option value="red">レッド (緊急感・男性向け)</option>
+            <option value="orange">オレンジ (アクション・男性向け)</option>
+            <option value="blue">ブルー (信頼性・士業)</option>
+            <option value="purple">パープル (高級感)</option>
+            <option value="gold">ゴールド (プレミアム)</option>
+            <option value="custom">カスタム (色を指定)</option>
+          </select>
+        </div>
+        <div class="form-row" id="editCtaCustomRow" style="display:none;">
+          <label>カスタム色 (Hex)</label>
+          <input type="color" id="editCtaColorCustom" value="#06C755" style="width:64px;height:40px;padding:2px;">
+        </div>
+        <div class="form-row">
+          <label>マイクロコピー (CTA下の小さな安心要素)</label>
+          <input type="text" id="editCtaMicrocopy" placeholder="例: ※登録無料・強引な勧誘なし">
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">空欄なら非表示。心理的ハードルを下げてCVR+3〜8%</small>
+        </div>
+        <div class="form-row">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);">
+            <input type="checkbox" id="editCtaShowFinalLarge" style="width:18px;height:18px;" checked>
+            <span>最終ステップで大型CTAをオーバーレイ表示</span>
+          </label>
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;margin-left:26px;">最後まで読んだユーザーに見逃させないCTA</small>
         </div>
       </div>
 
