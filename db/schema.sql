@@ -56,3 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_lp_step ON events(lp_id, step_index);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_sessions_lp_id ON sessions(lp_id);
+-- 集計クエリの主用途に対する複合インデックス (lp_id + event_type + timestamp で範囲スキャン高速化)
+CREATE INDEX IF NOT EXISTS idx_events_lp_type_ts ON events(lp_id, event_type, timestamp);
+-- セッションの期間フィルタ (s.lp_id + s.started_at)
+CREATE INDEX IF NOT EXISTS idx_sessions_lp_started ON sessions(lp_id, started_at);

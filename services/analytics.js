@@ -13,11 +13,14 @@ class AnalyticsService {
   }
 
   _eventDateFilter(from, to) {
+    // 旧実装: e.session_id IN (SELECT ... FROM sessions WHERE ...) を from/to で2重相関サブクエリ → 致命的に重い
+    // 新実装: events.timestamp で直接フィルタ。events.timestamp にインデックスあり (idx_events_timestamp)
+    // セッション開始日とイベント発生日は実用上ほぼ同じ (セッション開始→数秒〜数分でイベント発生)
     if (!from && !to) return { sql: '', params: [] };
     const conditions = [];
     const params = [];
-    if (from) { conditions.push(`e.session_id IN (SELECT id FROM sessions WHERE lp_id = e.lp_id AND started_at >= ?)`); params.push(from); }
-    if (to) { conditions.push(`e.session_id IN (SELECT id FROM sessions WHERE lp_id = e.lp_id AND started_at <= ?)`); params.push(to + ' 23:59:59'); }
+    if (from) { conditions.push(`e.timestamp >= ?`); params.push(from); }
+    if (to) { conditions.push(`e.timestamp <= ?`); params.push(to + ' 23:59:59'); }
     return { sql: conditions.length ? ' AND ' + conditions.join(' AND ') : '', params };
   }
 
