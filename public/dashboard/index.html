@@ -15,7 +15,19 @@
     SwipeLP Analytics
   </h1>
   <div class="header-actions">
-    <select class="lp-select" id="lpSelect"></select>
+    <div class="lp-combo" id="lpCombo">
+      <button type="button" class="lp-combo-trigger" id="lpComboTrigger">
+        <span id="lpComboLabel">LPを選択</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="lp-combo-chevron">
+          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="lp-combo-panel" id="lpComboPanel">
+        <input type="text" class="lp-combo-search" id="lpComboSearch" placeholder="LP名で検索..." autocomplete="off">
+        <ul class="lp-combo-list" id="lpComboList"></ul>
+      </div>
+    </div>
+    <select id="lpSelect" style="display:none;"></select>
     <div class="date-filter">
       <button class="date-btn active" data-range="all">全期間</button>
       <button class="date-btn" data-range="today">今日</button>

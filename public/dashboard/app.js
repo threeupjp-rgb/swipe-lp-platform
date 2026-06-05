@@ -82,9 +82,12 @@ function setupDateFilter() {
 
 // LP一覧読み込み (preserveSelection: true で現在選択中のLPを維持)
 let lpListChangeListenerAdded = false;
+let allLps = [];
+
 async function loadLpList(preserveSelection = false) {
   const res = await fetch(`${API}/api/lps`);
   const lps = await res.json();
+  allLps = lps;
 
   const select = document.getElementById('lpSelect');
   select.innerHTML = '';
@@ -96,21 +99,119 @@ async function loadLpList(preserveSelection = false) {
   });
 
   if (preserveSelection && currentLpId) {
-    // 編集後など: 既存の選択を維持
     select.value = currentLpId;
   } else if (lps.length > 0) {
-    // 初回起動: 先頭のLPを選択
     currentLpId = lps[0].id;
     await loadLpDetail(currentLpId);
     loadTabData();
   }
 
+  // カスタムドロップダウンのラベル更新
+  updateLpComboLabel();
+
   if (lpListChangeListenerAdded) return;
   lpListChangeListenerAdded = true;
   select.addEventListener('change', async () => {
     currentLpId = select.value;
+    showMetricsLoading();
     await loadLpDetail(currentLpId);
     loadTabData();
+  });
+  initLpCombo();
+}
+
+// ===== 検索可能カスタムドロップダウン =====
+function initLpCombo() {
+  const combo = document.getElementById('lpCombo');
+  const trigger = document.getElementById('lpComboTrigger');
+  const panel = document.getElementById('lpComboPanel');
+  const search = document.getElementById('lpComboSearch');
+  if (!combo || !trigger || !search) return;
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (combo.classList.contains('open')) {
+      closeLpCombo();
+    } else {
+      openLpCombo();
+    }
+  });
+
+  search.addEventListener('input', () => renderLpComboList(search.value));
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLpCombo();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!combo.contains(e.target)) closeLpCombo();
+  });
+}
+
+function openLpCombo() {
+  const combo = document.getElementById('lpCombo');
+  const search = document.getElementById('lpComboSearch');
+  combo.classList.add('open');
+  renderLpComboList('');
+  setTimeout(() => search.focus(), 30);
+}
+
+function closeLpCombo() {
+  const combo = document.getElementById('lpCombo');
+  const search = document.getElementById('lpComboSearch');
+  combo.classList.remove('open');
+  search.value = '';
+}
+
+function renderLpComboList(query) {
+  const list = document.getElementById('lpComboList');
+  const q = (query || '').trim().toLowerCase();
+  const filtered = q ? allLps.filter(lp => (lp.name || '').toLowerCase().includes(q) || (lp.slug || '').toLowerCase().includes(q)) : allLps;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<li class="no-result">該当するLPがありません</li>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(lp =>
+    `<li data-id="${lp.id}" class="${lp.id === currentLpId ? 'selected' : ''}">${escapeHtml(lp.name)}</li>`
+  ).join('');
+
+  list.querySelectorAll('li[data-id]').forEach(li => {
+    li.addEventListener('click', async () => {
+      currentLpId = li.dataset.id;
+      const select = document.getElementById('lpSelect');
+      if (select) select.value = currentLpId;
+      updateLpComboLabel();
+      closeLpCombo();
+      showMetricsLoading();
+      await loadLpDetail(currentLpId);
+      loadTabData();
+    });
+  });
+}
+
+function updateLpComboLabel() {
+  const label = document.getElementById('lpComboLabel');
+  if (!label || !currentLpId) return;
+  const lp = allLps.find(l => l.id === currentLpId);
+  if (lp) label.textContent = lp.name;
+}
+
+// メトリクス値をローディング状態に
+function showMetricsLoading() {
+  ['metricSessions', 'metricCta', 'metricCvr', 'metricSteps', 'metricDuration', 'metricBounce'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = '…';
+      el.classList.add('loading');
+    }
+  });
+}
+
+function clearMetricsLoading() {
+  ['metricSessions', 'metricCta', 'metricCvr', 'metricSteps', 'metricDuration', 'metricBounce'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('loading');
   });
 }
 
@@ -163,6 +264,7 @@ async function loadTabData() {
 
 // 概要タブ
 async function loadOverview() {
+  showMetricsLoading();
   const dq = getDateQuery();
   const res = await fetch(`${API}/api/analytics/${currentLpId}/overview?_=1${dq}`);
   const data = await res.json();
@@ -174,6 +276,7 @@ async function loadOverview() {
   document.getElementById('metricDuration').textContent = (data.avgSessionDuration / 1000).toFixed(1) + '秒';
   document.getElementById('metricBounce').textContent = data.bounceRate + '%';
   document.getElementById('metricPeriod').textContent = getPeriodLabel();
+  clearMetricsLoading();
 
   // CVR評価 (高いほど良い)
   const cvr = data.conversionRate;

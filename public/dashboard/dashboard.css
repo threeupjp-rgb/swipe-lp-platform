@@ -97,33 +97,148 @@ html, body {
   gap: 12px;
 }
 
-.lp-select {
+/* LP セレクト (検索可能カスタムドロップダウン) */
+.lp-combo {
+  position: relative;
+  min-width: 220px;
+}
+
+.lp-combo-trigger {
+  width: 100%;
   background: rgba(20, 22, 30, 0.8);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 9px 14px;
-  padding-right: 32px;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.18s;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236b6e7a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
 }
 
-.lp-select:hover {
+.lp-combo-trigger:hover {
   border-color: var(--border-strong);
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-.lp-select:focus {
-  outline: none;
+.lp-combo.open .lp-combo-trigger {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.lp-combo-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.lp-combo.open .lp-combo-chevron { transform: rotate(180deg); }
+
+.lp-combo-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 320px;
+  max-height: 420px;
+  background: var(--bg-card-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+}
+
+.lp-combo.open .lp-combo-panel { display: flex; }
+
+.lp-combo-search {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.lp-combo-search::placeholder { color: var(--text-muted); }
+
+.lp-combo-list {
+  list-style: none;
+  overflow-y: auto;
+  padding: 6px;
+  flex: 1;
+  margin: 0;
+}
+
+.lp-combo-list li {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-combo-list li:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.lp-combo-list li.selected {
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.lp-combo-list li.selected::before {
+  content: '✓';
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.lp-combo-list li.no-result {
+  color: var(--text-muted);
+  cursor: default;
+  text-align: center;
+  font-style: italic;
+}
+
+.lp-combo-list li.no-result:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* Scrollbar (combo list) */
+.lp-combo-list::-webkit-scrollbar { width: 6px; }
+.lp-combo-list::-webkit-scrollbar-track { background: transparent; }
+.lp-combo-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+/* メトリクス値のローディング状態 */
+.metric-card .value.loading {
+  opacity: 0.4;
+  background: linear-gradient(180deg, #5b5b62, #3a3a40);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: metricPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes metricPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.65; }
 }
 
 .btn {
