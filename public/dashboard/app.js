@@ -162,10 +162,31 @@ function closeLpCombo() {
   search.value = '';
 }
 
+// 検索用正規化: ひらがな→カタカナ・全角→半角・小文字化・スペース除去
+// これにより「アリス」「ありす」「ＡＲＩＳＵ」「あり す」が同じキーになる
+function normalizeForSearch(s) {
+  if (!s) return '';
+  return s
+    .toLowerCase()
+    // ひらがな → カタカナ
+    .replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    // 全角英数記号 → 半角
+    .replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // 全角スペース → 半角
+    .replace(/　/g, ' ')
+    // すべての空白除去
+    .replace(/\s+/g, '');
+}
+
 function renderLpComboList(query) {
   const list = document.getElementById('lpComboList');
-  const q = (query || '').trim().toLowerCase();
-  const filtered = q ? allLps.filter(lp => (lp.name || '').toLowerCase().includes(q) || (lp.slug || '').toLowerCase().includes(q)) : allLps;
+  const nq = normalizeForSearch(query);
+
+  const filtered = nq ? allLps.filter(lp => {
+    const name = normalizeForSearch(lp.name);
+    const slug = normalizeForSearch(lp.slug);
+    return name.includes(nq) || slug.includes(nq);
+  }) : allLps;
 
   if (filtered.length === 0) {
     list.innerHTML = '<li class="no-result">該当するLPがありません</li>';
@@ -173,7 +194,7 @@ function renderLpComboList(query) {
   }
 
   list.innerHTML = filtered.map(lp =>
-    `<li data-id="${lp.id}" class="${lp.id === currentLpId ? 'selected' : ''}">${escapeHtml(lp.name)}</li>`
+    `<li data-id="${lp.id}" class="${lp.id === currentLpId ? 'selected' : ''}">${escapeHtml(lp.name)}<span style="margin-left:auto;font-size:11px;color:var(--text-muted);opacity:0.6;">/${escapeHtml(lp.slug || '')}</span></li>`
   ).join('');
 
   list.querySelectorAll('li[data-id]').forEach(li => {
