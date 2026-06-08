@@ -163,7 +163,6 @@ function closeLpCombo() {
 }
 
 // 検索用正規化: ひらがな→カタカナ・全角→半角・小文字化・スペース除去
-// これにより「アリス」「ありす」「ＡＲＩＳＵ」「あり す」が同じキーになる
 function normalizeForSearch(s) {
   if (!s) return '';
   return s
@@ -174,18 +173,102 @@ function normalizeForSearch(s) {
     .replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
     // 全角スペース → 半角
     .replace(/　/g, ' ')
-    // すべての空白除去
     .replace(/\s+/g, '');
+}
+
+// ローマ字 (英単語含む) → ひらがな近似変換
+// 例: "nexus" → "ねくす", "grace" → "ぐらせ", "alice" → "ありせ"
+// 英単語の発音には完全対応できないが、よくあるLP名の検索に十分実用的
+function romajiToHira(s) {
+  if (!s) return '';
+  s = s.toLowerCase()
+    // 英単語特有の表記 → ローマ字ライク
+    .replace(/x/g, 'ks')                  // x → ks (nexus → neksus)
+    .replace(/c([eiy])/g, 's$1')          // ce, ci, cy → se, si, sy
+    .replace(/c([aou])/g, 'k$1')          // ca, co, cu → ka, ko, ku
+    .replace(/c/g, 'k')                   // 残りの c → k
+    .replace(/qu/g, 'ku')
+    .replace(/q/g, 'k')
+    .replace(/l/g, 'r')                   // l → r
+    .replace(/v/g, 'b')                   // v → b
+    .replace(/f([^u])/g, 'h$1')           // f → h (fuだけは残す)
+    .replace(/th/g, 's')                  // th → s
+    .replace(/wh/g, 'h')
+    .replace(/[^a-zぁ-んァ-ヶー]/g, '');  // 英数字とかな以外を除去
+
+  // ローマ字 → ひらがな (3文字, 2文字, 1文字の順で最長一致)
+  const map3 = {
+    'kya':'きゃ','kyu':'きゅ','kyo':'きょ',
+    'sha':'しゃ','shu':'しゅ','sho':'しょ','shi':'し',
+    'cha':'ちゃ','chu':'ちゅ','cho':'ちょ','chi':'ち',
+    'tsu':'つ',
+    'nya':'にゃ','nyu':'にゅ','nyo':'にょ',
+    'hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ',
+    'mya':'みゃ','myu':'みゅ','myo':'みょ',
+    'rya':'りゃ','ryu':'りゅ','ryo':'りょ',
+    'gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ',
+    'bya':'びゃ','byu':'びゅ','byo':'びょ',
+    'pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ',
+  };
+  const map2 = {
+    'ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ',
+    'sa':'さ','su':'す','se':'せ','so':'そ',
+    'ta':'た','te':'て','to':'と',
+    'na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の',
+    'ha':'は','hi':'ひ','hu':'ふ','fu':'ふ','he':'へ','ho':'ほ',
+    'ma':'ま','mi':'み','mu':'む','me':'め','mo':'も',
+    'ya':'や','yu':'ゆ','yo':'よ',
+    'ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ',
+    'wa':'わ','wo':'を',
+    'ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご',
+    'za':'ざ','zi':'じ','ji':'じ','zu':'ず','ze':'ぜ','zo':'ぞ',
+    'da':'だ','de':'で','do':'ど',
+    'ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ',
+    'pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ',
+    'ja':'じゃ','ju':'じゅ','jo':'じょ',
+  };
+  const map1 = {
+    'a':'あ','i':'い','u':'う','e':'え','o':'お','n':'ん',
+  };
+
+  let out = '';
+  let i = 0;
+  while (i < s.length) {
+    const c3 = s.substr(i, 3);
+    if (map3[c3]) { out += map3[c3]; i += 3; continue; }
+    const c2 = s.substr(i, 2);
+    if (map2[c2]) { out += map2[c2]; i += 2; continue; }
+    const c1 = s[i];
+    if (map1[c1]) { out += map1[c1]; i += 1; continue; }
+    // 既にひらがな/カタカナの場合はそのまま
+    if (/[ぁ-んァ-ヶー]/.test(c1)) { out += c1; i += 1; continue; }
+    // それ以外は元のまま (検索キーに残す)
+    out += c1;
+    i += 1;
+  }
+  // 最後にカタカナに統一
+  return out.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+}
+
+// 検索対象の全表現を返す (LP1つにつき複数のキー候補)
+function buildSearchKeys(text) {
+  const norm = normalizeForSearch(text);
+  const hira = romajiToHira(text);
+  // norm: アリス, ALICE; hira: norm のローマ字部分をかな化
+  return norm + '|' + hira;
 }
 
 function renderLpComboList(query) {
   const list = document.getElementById('lpComboList');
   const nq = normalizeForSearch(query);
+  // クエリ側もローマ字版を生成 (ユーザーがローマ字で打った場合 = そのまま、ひらがな = カナ化済み)
+  const hq = romajiToHira(query);
+  const queries = [nq, hq].filter(Boolean);
 
   const filtered = nq ? allLps.filter(lp => {
-    const name = normalizeForSearch(lp.name);
-    const slug = normalizeForSearch(lp.slug);
-    return name.includes(nq) || slug.includes(nq);
+    // 各LPの検索キー: name + slug の正規化版 + ローマ字→ひらがな変換版
+    const haystack = buildSearchKeys(lp.name) + '|' + buildSearchKeys(lp.slug);
+    return queries.some(q => haystack.includes(q));
   }) : allLps;
 
   if (filtered.length === 0) {
