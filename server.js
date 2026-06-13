@@ -61,6 +61,23 @@ for (const [col, def] of lpCtaCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
 }
 
+// プライマリドメインへのリダイレクト
+// 環境変数 PRIMARY_HOST 設定時、それ以外のホスト (onrender.com等) からのアクセスは301で誘導
+// 除外: /health (Renderヘルスチェック), /api/* (Cron Job 等の内部用), /uploads/* (画像直接配信)
+const PRIMARY_HOST = (process.env.PRIMARY_HOST || '').trim();
+if (PRIMARY_HOST) {
+  console.log(`[redirect] PRIMARY_HOST=${PRIMARY_HOST} 設定済み。他ホストからのアクセスは301で誘導`);
+  app.use((req, res, next) => {
+    const host = (req.headers.host || '').toLowerCase();
+    if (!host || host === PRIMARY_HOST.toLowerCase()) return next();
+    const path = req.path;
+    if (path === '/health' || path.startsWith('/api/') || path.startsWith('/uploads/')) {
+      return next();
+    }
+    return res.redirect(301, `https://${PRIMARY_HOST}${req.originalUrl}`);
+  });
+}
+
 // ミドルウェア
 const cors = require('cors');
 const compression = require('compression');
