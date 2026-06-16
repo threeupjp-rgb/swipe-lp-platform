@@ -589,7 +589,8 @@ function fireConversion(pixels) {
     formSuccess.style.display = 'none';
     submissionForm.style.display = '';
     if (isMultistep) showStep(0);
-    tracker.trackCtaClick(engine.getCurrentIndex());  // CTAクリックとして計測
+    tracker.trackCtaClick(engine.getCurrentIndex());  // 内部DBに記録
+    fireConversion(lp.config.pixels || {});          // ピクセルCV発火 (クリック時)
   }
   function closeFormModal() {
     formModal.classList.remove('visible');
@@ -636,8 +637,7 @@ function fireConversion(pixels) {
         formError.style.display = '';
         return;
       }
-      // 成功 → ピクセル発火 + 成功画面
-      fireConversion(lp.config.pixels || {});
+      // 成功 → 成功画面表示 (ピクセルCVはクリック時に既に発火済みなので二重発火しない)
       const successText = document.querySelector('.form-success-text');
       if (successText) successText.textContent = data.success_message || 'ありがとうございました。担当者よりご連絡いたします。';
       submissionForm.style.display = 'none';
