@@ -423,14 +423,30 @@ function fireConversion(pixels) {
       area: lp.form_show_area === 1,
       message: lp.form_show_message !== 0,
     };
+    // 必須にするフィールド (表示している場合のみ effective)
+    // name / phone / email は表示中なら必須。 line_id / area / message は任意
+    const requiredFields = new Set(['name', 'phone', 'email']);
+
     Object.entries(map).forEach(([key, show]) => {
       const f = submissionForm.querySelector(`.form-field[data-field="${key}"]`);
       if (!f) return;
       if (show) {
         f.classList.remove('hidden');
-        // name と phone は実質必須にする (空NG)
         const input = f.querySelector('input, textarea');
-        if (input) input.required = (key === 'name' || key === 'phone');
+        if (input) input.required = requiredFields.has(key);
+        // ラベルに必須マーク (*) を表示/非表示制御
+        const label = f.querySelector('label');
+        if (label) {
+          const hasMark = label.querySelector('.req');
+          if (requiredFields.has(key) && !hasMark) {
+            const sp = document.createElement('span');
+            sp.className = 'req';
+            sp.textContent = ' *';
+            label.appendChild(sp);
+          } else if (!requiredFields.has(key) && hasMark) {
+            hasMark.remove();
+          }
+        }
       } else {
         f.classList.add('hidden');
       }
