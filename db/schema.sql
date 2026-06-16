@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS submissions (
     phone TEXT,
     line_id TEXT,
     email TEXT,
+    area TEXT,
     message TEXT,
     utm_source TEXT,
     utm_medium TEXT,

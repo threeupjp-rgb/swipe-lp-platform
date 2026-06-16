@@ -17,11 +17,11 @@ router.post('/:lpIdOrSlug', async (req, res) => {
   const lp = req.db.prepare('SELECT * FROM lps WHERE id = ? OR slug = ?').get(key, key);
   if (!lp) return res.status(404).json({ error: 'LP not found' });
 
-  const { name, phone, line_id, email, message,
+  const { name, phone, line_id, email, area, message,
     utm_source, utm_medium, utm_campaign, utm_content, referrer } = req.body || {};
 
   // 最低1つは入力必須 (全空は弾く)
-  if (!name && !phone && !line_id && !email && !message) {
+  if (!name && !phone && !line_id && !email && !area && !message) {
     return res.status(400).json({ error: '入力項目が空です' });
   }
 
@@ -32,6 +32,7 @@ router.post('/:lpIdOrSlug', async (req, res) => {
     phone: trim(phone, 50),
     line_id: trim(line_id, 100),
     email: trim(email, 200),
+    area: trim(area, 200),
     message: trim(message, 2000),
     utm_source: trim(utm_source, 100),
     utm_medium: trim(utm_medium, 100),
@@ -42,12 +43,12 @@ router.post('/:lpIdOrSlug', async (req, res) => {
   const userAgent = String(req.headers['user-agent'] || '').slice(0, 500);
 
   const result = req.db.prepare(`
-    INSERT INTO submissions (lp_id, name, phone, line_id, email, message,
+    INSERT INTO submissions (lp_id, name, phone, line_id, email, area, message,
       utm_source, utm_medium, utm_campaign, utm_content, referrer, user_agent)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     lp.id,
-    safe.name, safe.phone, safe.line_id, safe.email, safe.message,
+    safe.name, safe.phone, safe.line_id, safe.email, safe.area, safe.message,
     safe.utm_source, safe.utm_medium, safe.utm_campaign, safe.utm_content,
     safe.referrer, userAgent
   );
@@ -63,6 +64,7 @@ router.post('/:lpIdOrSlug', async (req, res) => {
     if (safe.phone)    lines.push(`電話番号: ${safe.phone}`);
     if (safe.line_id)  lines.push(`LINE ID: ${safe.line_id}`);
     if (safe.email)    lines.push(`メール: ${safe.email}`);
+    if (safe.area)     lines.push(`エリア: ${safe.area}`);
     if (safe.message)  lines.push(`メッセージ:\n${safe.message}`);
     const meta = [];
     if (safe.utm_source)   meta.push(`流入元: ${safe.utm_source}`);
@@ -77,7 +79,8 @@ router.post('/:lpIdOrSlug', async (req, res) => {
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;">
         ${[
           ['お名前', safe.name], ['電話番号', safe.phone], ['LINE ID', safe.line_id],
-          ['メール', safe.email], ['メッセージ', safe.message ? safe.message.replace(/\n/g, '<br>') : null]
+          ['メール', safe.email], ['エリア', safe.area],
+          ['メッセージ', safe.message ? safe.message.replace(/\n/g, '<br>') : null]
         ].filter(([_, v]) => v).map(([k, v]) =>
           `<tr><th style="text-align:left;padding:8px;background:#f5f5f5;width:120px;border:1px solid #ddd;">${k}</th><td style="padding:8px;border:1px solid #ddd;">${escapeHtml(v).replace(/&lt;br&gt;/g, '<br>')}</td></tr>`
         ).join('')}

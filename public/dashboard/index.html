@@ -358,10 +358,24 @@
             <input type="checkbox" id="createFormShowEmail" style="width:18px;height:18px;">
             <span>メールアドレス</span>
           </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="createFormShowMessage" style="width:18px;height:18px;" checked>
             <span>メッセージ・自由入力</span>
           </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="createFormShowArea" style="width:18px;height:18px;" onchange="toggleCreateAreaConfig()">
+            <span>エリア・最寄り駅 (自由記述)</span>
+          </label>
+          <div id="createAreaConfig" style="display:none;margin-left:26px;padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:12px;">
+            <div class="form-row">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「ご希望のエリア・最寄り駅」)</label>
+              <input type="text" id="createFormAreaLabel" placeholder="例: ご希望のエリア">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">プレースホルダー (空欄なら「例: 梅田、難波」)</label>
+              <input type="text" id="createFormAreaPlaceholder" placeholder="例: 関西・関東・全国OK">
+            </div>
+          </div>
           <div class="form-row">
             <label>送信ボタンの文言 (空欄ならCTA文言を流用)</label>
             <input type="text" id="createFormSubmitLabel" placeholder="例: 応募する">
@@ -526,10 +540,24 @@
             <input type="checkbox" id="editFormShowEmail" style="width:18px;height:18px;">
             <span>メールアドレス</span>
           </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="editFormShowMessage" style="width:18px;height:18px;" checked>
             <span>メッセージ・自由入力</span>
           </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="editFormShowArea" style="width:18px;height:18px;" onchange="toggleEditAreaConfig()">
+            <span>エリア・最寄り駅 (自由記述)</span>
+          </label>
+          <div id="editAreaConfig" style="display:none;margin-left:26px;padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:12px;">
+            <div class="form-row">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「ご希望のエリア・最寄り駅」)</label>
+              <input type="text" id="editFormAreaLabel" placeholder="例: ご希望のエリア">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">プレースホルダー (空欄なら「例: 梅田、難波」)</label>
+              <input type="text" id="editFormAreaPlaceholder" placeholder="例: 関西・関東・全国OK">
+            </div>
+          </div>
           <div class="form-row">
             <label>送信ボタンの文言 (空欄ならCTA文言を流用)</label>
             <input type="text" id="editFormSubmitLabel" placeholder="例: 応募する">

@@ -27,7 +27,8 @@ router.post('/lps', (req, res) => {
     cta_microcopy, cta_color, cta_color_custom, cta_show_final_large,
     cta_action_type, form_show_name, form_show_phone, form_show_line_id,
     form_show_email, form_show_message, form_submit_label,
-    form_success_message, form_notify_email } = req.body;
+    form_success_message, form_notify_email,
+    form_show_area, form_area_label, form_area_placeholder } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
@@ -44,8 +45,9 @@ router.post('/lps', (req, res) => {
       cta_microcopy, cta_color, cta_color_custom, cta_show_final_large,
       cta_action_type, form_show_name, form_show_phone, form_show_line_id,
       form_show_email, form_show_message, form_submit_label,
-      form_success_message, form_notify_email)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      form_success_message, form_notify_email,
+      form_show_area, form_area_label, form_area_placeholder)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, name, slug, JSON.stringify(config),
     cta_text || 'お問い合わせ', cta_url || '#',
@@ -61,7 +63,10 @@ router.post('/lps', (req, res) => {
     form_show_message === false ? 0 : 1,
     form_submit_label || null,
     form_success_message || null,
-    form_notify_email || null
+    form_notify_email || null,
+    form_show_area ? 1 : 0,
+    form_area_label || null,
+    form_area_placeholder || null
   );
 
   res.json({ id, slug, url: `/lp/${slug}` });
@@ -99,7 +104,8 @@ router.put('/lps/:lpId', (req, res) => {
   // フォーム設定
   const { cta_action_type, form_show_name, form_show_phone, form_show_line_id,
     form_show_email, form_show_message, form_submit_label,
-    form_success_message, form_notify_email } = req.body;
+    form_success_message, form_notify_email,
+    form_show_area, form_area_label, form_area_placeholder } = req.body;
   if (cta_action_type !== undefined) {
     if (!['url', 'modal_form', 'embed_form'].includes(cta_action_type)) {
       return res.status(400).json({ error: 'cta_action_type は url / modal_form / embed_form のいずれか' });
@@ -114,6 +120,9 @@ router.put('/lps/:lpId', (req, res) => {
   if (form_submit_label !== undefined) { updates.push('form_submit_label = ?'); params.push(form_submit_label || null); }
   if (form_success_message !== undefined) { updates.push('form_success_message = ?'); params.push(form_success_message || null); }
   if (form_notify_email !== undefined) { updates.push('form_notify_email = ?'); params.push(form_notify_email || null); }
+  if (form_show_area !== undefined) { updates.push('form_show_area = ?'); params.push(form_show_area ? 1 : 0); }
+  if (form_area_label !== undefined) { updates.push('form_area_label = ?'); params.push(form_area_label || null); }
+  if (form_area_placeholder !== undefined) { updates.push('form_area_placeholder = ?'); params.push(form_area_placeholder || null); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 

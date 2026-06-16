@@ -626,6 +626,10 @@ function openCreateLP() {
   document.getElementById('createFormShowLineId').checked = false;
   document.getElementById('createFormShowEmail').checked = false;
   document.getElementById('createFormShowMessage').checked = true;
+  document.getElementById('createFormShowArea').checked = false;
+  document.getElementById('createAreaConfig').style.display = 'none';
+  document.getElementById('createFormAreaLabel').value = '';
+  document.getElementById('createFormAreaPlaceholder').value = '';
   document.getElementById('createFormSubmitLabel').value = '';
   document.getElementById('createFormSuccessMessage').value = '';
   document.getElementById('createFormNotifyEmail').value = '';
@@ -657,6 +661,16 @@ function toggleCreateFormSection() {
 function toggleEditFormSection() {
   const sel = document.getElementById('editCtaActionType').value;
   document.getElementById('editFormFieldsBox').style.display = sel === 'url' ? 'none' : '';
+}
+
+function toggleCreateAreaConfig() {
+  const checked = document.getElementById('createFormShowArea').checked;
+  document.getElementById('createAreaConfig').style.display = checked ? '' : 'none';
+}
+
+function toggleEditAreaConfig() {
+  const checked = document.getElementById('editFormShowArea').checked;
+  document.getElementById('editAreaConfig').style.display = checked ? '' : 'none';
 }
 
 function closeCreateLP() {
@@ -826,6 +840,9 @@ async function submitCreateLP() {
         form_show_line_id: document.getElementById('createFormShowLineId').checked,
         form_show_email: document.getElementById('createFormShowEmail').checked,
         form_show_message: document.getElementById('createFormShowMessage').checked,
+        form_show_area: document.getElementById('createFormShowArea').checked,
+        form_area_label: document.getElementById('createFormAreaLabel').value.trim() || null,
+        form_area_placeholder: document.getElementById('createFormAreaPlaceholder').value.trim() || null,
         form_submit_label: document.getElementById('createFormSubmitLabel').value.trim() || null,
         form_success_message: document.getElementById('createFormSuccessMessage').value.trim() || null,
         form_notify_email: document.getElementById('createFormNotifyEmail').value.trim() || null
@@ -885,6 +902,10 @@ async function openEditLP() {
   document.getElementById('editFormShowLineId').checked = editLpData.form_show_line_id === 1;
   document.getElementById('editFormShowEmail').checked = editLpData.form_show_email === 1;
   document.getElementById('editFormShowMessage').checked = editLpData.form_show_message !== 0;
+  document.getElementById('editFormShowArea').checked = editLpData.form_show_area === 1;
+  document.getElementById('editAreaConfig').style.display = editLpData.form_show_area === 1 ? '' : 'none';
+  document.getElementById('editFormAreaLabel').value = editLpData.form_area_label || '';
+  document.getElementById('editFormAreaPlaceholder').value = editLpData.form_area_placeholder || '';
   document.getElementById('editFormSubmitLabel').value = editLpData.form_submit_label || '';
   document.getElementById('editFormSuccessMessage').value = editLpData.form_success_message || '';
   document.getElementById('editFormNotifyEmail').value = editLpData.form_notify_email || '';
@@ -1086,6 +1107,9 @@ async function submitEditLP() {
         form_show_line_id: document.getElementById('editFormShowLineId').checked,
         form_show_email: document.getElementById('editFormShowEmail').checked,
         form_show_message: document.getElementById('editFormShowMessage').checked,
+        form_show_area: document.getElementById('editFormShowArea').checked,
+        form_area_label: document.getElementById('editFormAreaLabel').value.trim() || null,
+        form_area_placeholder: document.getElementById('editFormAreaPlaceholder').value.trim() || null,
         form_submit_label: document.getElementById('editFormSubmitLabel').value.trim() || null,
         form_success_message: document.getElementById('editFormSuccessMessage').value.trim() || null,
         form_notify_email: document.getElementById('editFormNotifyEmail').value.trim() || null
@@ -1209,6 +1233,7 @@ async function loadSubmissions() {
           <th style="padding:10px 12px;text-align:left;">日時</th>
           <th style="padding:10px 12px;text-align:left;">名前</th>
           <th style="padding:10px 12px;text-align:left;">電話</th>
+          <th style="padding:10px 12px;text-align:left;">エリア</th>
           <th style="padding:10px 12px;text-align:left;">LINE/メール</th>
           <th style="padding:10px 12px;text-align:left;">メッセージ</th>
           <th style="padding:10px 12px;text-align:left;">流入元</th>
@@ -1221,6 +1246,7 @@ async function loadSubmissions() {
             <td style="padding:10px 12px;color:var(--text-muted);white-space:nowrap;">${new Date(s.submitted_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })}</td>
             <td style="padding:10px 12px;font-weight:700;">${escapeHtml(s.name || '-')}</td>
             <td style="padding:10px 12px;"><a href="tel:${escapeHtml(s.phone || '')}" style="color:var(--primary-light);">${escapeHtml(s.phone || '-')}</a></td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text-secondary);">${escapeHtml(s.area || '-')}</td>
             <td style="padding:10px 12px;font-size:12px;color:var(--text-secondary);">${[s.line_id, s.email].filter(Boolean).map(escapeHtml).join('<br>') || '-'}</td>
             <td style="padding:10px 12px;font-size:12px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(s.message || '')}">${escapeHtml(s.message || '-')}</td>
             <td style="padding:10px 12px;font-size:11px;color:var(--text-muted);">${escapeHtml([s.utm_source, s.utm_campaign].filter(Boolean).join('/') || '-')}</td>
@@ -1243,10 +1269,11 @@ function exportSubmissionsCSV() {
     alert('エクスポートする応募がありません');
     return;
   }
-  const headers = ['日時','名前','電話','LINE_ID','メール','メッセージ','utm_source','utm_medium','utm_campaign','utm_content','referrer'];
+  const headers = ['日時','名前','電話','LINE_ID','メール','エリア','メッセージ','utm_source','utm_medium','utm_campaign','utm_content','referrer'];
   const rows = currentSubmissions.map(s => [
     new Date(s.submitted_at).toLocaleString('ja-JP'),
     s.name || '', s.phone || '', s.line_id || '', s.email || '',
+    s.area || '',
     (s.message || '').replace(/\n/g, ' '),
     s.utm_source || '', s.utm_medium || '', s.utm_campaign || '', s.utm_content || '',
     s.referrer || '',

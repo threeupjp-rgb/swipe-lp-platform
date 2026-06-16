@@ -65,6 +65,10 @@
         <label>メールアドレス</label>
         <input type="email" name="email" inputmode="email" autocomplete="email" placeholder="例: name@example.com">
       </div>
+      <div class="form-field" data-field="area">
+        <label data-area-label>ご希望のエリア・最寄り駅</label>
+        <input type="text" name="area" data-area-placeholder placeholder="例: 梅田、難波">
+      </div>
       <div class="form-field" data-field="message">
         <label>メッセージ・ご質問</label>
         <textarea name="message" rows="3" placeholder="ご自由にどうぞ"></textarea>
@@ -416,6 +420,7 @@ function fireConversion(pixels) {
       phone: lp.form_show_phone !== 0,
       line_id: lp.form_show_line_id === 1,
       email: lp.form_show_email === 1,
+      area: lp.form_show_area === 1,
       message: lp.form_show_message !== 0,
     };
     Object.entries(map).forEach(([key, show]) => {
@@ -430,6 +435,15 @@ function fireConversion(pixels) {
         f.classList.add('hidden');
       }
     });
+
+    // エリア欄: LP毎にラベル/プレースホルダーをカスタマイズ可能
+    if (lp.form_show_area === 1) {
+      const areaLabel = submissionForm.querySelector('[data-area-label]');
+      const areaInput = submissionForm.querySelector('[data-area-placeholder]');
+      if (areaLabel && lp.form_area_label) areaLabel.textContent = lp.form_area_label;
+      if (areaInput && lp.form_area_placeholder) areaInput.placeholder = lp.form_area_placeholder;
+    }
+
     // ラベル文言
     if (lp.form_submit_label) formSubmitBtn.textContent = lp.form_submit_label;
     else formSubmitBtn.textContent = lp.cta_text || '送信する';
@@ -471,6 +485,7 @@ function fireConversion(pixels) {
       phone: fd.get('phone') || null,
       line_id: fd.get('line_id') || null,
       email: fd.get('email') || null,
+      area: fd.get('area') || null,
       message: fd.get('message') || null,
       // UTM とリファラ
       utm_source: getQueryParam('utm_source'),

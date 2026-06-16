@@ -72,10 +72,16 @@ const lpFormCols = [
   ['form_submit_label', "TEXT"],                  // null なら cta_text 流用
   ['form_success_message', 'TEXT'],
   ['form_notify_email', 'TEXT'],                  // 応募通知の送信先メアド
+  ['form_show_area', 'INTEGER DEFAULT 0'],        // エリア欄表示ON/OFF
+  ['form_area_label', 'TEXT'],                    // null なら「ご希望のエリア」
+  ['form_area_placeholder', 'TEXT'],              // null なら「例: 梅田、難波」
 ];
 for (const [col, def] of lpFormCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
 }
+
+// submissions に area 列がない既存DB向けマイグレーション
+try { db.exec(`ALTER TABLE submissions ADD COLUMN area TEXT`); } catch {}
 
 // プライマリドメインへのリダイレクト
 // 環境変数 PRIMARY_HOST 設定時、それ以外のホスト (onrender.com等) からのアクセスは301で誘導
