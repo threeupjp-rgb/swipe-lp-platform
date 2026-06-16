@@ -61,6 +61,22 @@ for (const [col, def] of lpCtaCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
 }
 
+// マイグレーション: フォーム機能列追加
+const lpFormCols = [
+  ['cta_action_type', "TEXT DEFAULT 'url'"],   // 'url' | 'modal_form' | 'embed_form'
+  ['form_show_name', 'INTEGER DEFAULT 1'],
+  ['form_show_phone', 'INTEGER DEFAULT 1'],
+  ['form_show_line_id', 'INTEGER DEFAULT 0'],
+  ['form_show_email', 'INTEGER DEFAULT 0'],
+  ['form_show_message', 'INTEGER DEFAULT 1'],
+  ['form_submit_label', "TEXT"],                  // null なら cta_text 流用
+  ['form_success_message', 'TEXT'],
+  ['form_notify_email', 'TEXT'],                  // 応募通知の送信先メアド
+];
+for (const [col, def] of lpFormCols) {
+  try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}
+}
+
 // プライマリドメインへのリダイレクト
 // 環境変数 PRIMARY_HOST 設定時、それ以外のホスト (onrender.com等) からのアクセスは301で誘導
 // 除外: /health (Renderヘルスチェック), /api/* (Cron Job 等の内部用), /uploads/* (画像直接配信)
@@ -158,6 +174,8 @@ app.get('/health', (req, res) => {
 // 公開API (認証不要)
 const trackRoutes = require('./routes/track');
 app.use('/api/track', trackRoutes);
+const submitRoutes = require('./routes/submit');
+app.use('/api/submit', submitRoutes);
 app.get('/api/lp-by-slug/:slug', (req, res) => {
   const lp = db.prepare('SELECT * FROM lps WHERE slug = ?').get(req.params.slug);
   if (!lp) return res.status(404).json({ error: 'LP not found' });

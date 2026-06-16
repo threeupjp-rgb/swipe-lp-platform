@@ -36,6 +36,28 @@ CREATE TABLE IF NOT EXISTS sessions (
     FOREIGN KEY (lp_id) REFERENCES lps(id)
 );
 
+-- フォーム送信
+CREATE TABLE IF NOT EXISTS submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lp_id TEXT NOT NULL,
+    name TEXT,
+    phone TEXT,
+    line_id TEXT,
+    email TEXT,
+    message TEXT,
+    utm_source TEXT,
+    utm_medium TEXT,
+    utm_campaign TEXT,
+    utm_content TEXT,
+    referrer TEXT,
+    user_agent TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (lp_id) REFERENCES lps(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_submissions_lp_id ON submissions(lp_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_lp_submitted ON submissions(lp_id, submitted_at);
+
 -- トラッキングイベント
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

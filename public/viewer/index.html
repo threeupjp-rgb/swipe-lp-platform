@@ -43,6 +43,42 @@
   </div>
 </div>
 
+<!-- 応募フォーム モーダル (cta_action_type='modal_form' / 'embed_form'時に使用) -->
+<div class="form-modal" id="formModal">
+  <div class="form-modal-card">
+    <button type="button" class="form-close" id="formCloseBtn" aria-label="閉じる">×</button>
+    <h3 class="form-title" id="formTitle">お申し込み</h3>
+    <form id="submissionForm" novalidate>
+      <div class="form-field" data-field="name">
+        <label>お名前 <span class="req">*</span></label>
+        <input type="text" name="name" autocomplete="name" required>
+      </div>
+      <div class="form-field" data-field="phone">
+        <label>電話番号 <span class="req">*</span></label>
+        <input type="tel" name="phone" inputmode="tel" autocomplete="tel" placeholder="例: 090-1234-5678">
+      </div>
+      <div class="form-field" data-field="line_id">
+        <label>LINE ID</label>
+        <input type="text" name="line_id" placeholder="例: example_id">
+      </div>
+      <div class="form-field" data-field="email">
+        <label>メールアドレス</label>
+        <input type="email" name="email" inputmode="email" autocomplete="email" placeholder="例: name@example.com">
+      </div>
+      <div class="form-field" data-field="message">
+        <label>メッセージ・ご質問</label>
+        <textarea name="message" rows="3" placeholder="ご自由にどうぞ"></textarea>
+      </div>
+      <button type="submit" class="form-submit-btn" id="formSubmitBtn">送信する</button>
+      <div class="form-error" id="formError" style="display:none;"></div>
+    </form>
+    <div class="form-success" id="formSuccess" style="display:none;">
+      <div class="form-success-icon">✓</div>
+      <div class="form-success-text">ありがとうございました。</div>
+    </div>
+  </div>
+</div>
+
 <!-- スワイプヒント（テキスト版） -->
 <div class="swipe-hint" id="swipeHint">
   <span class="arrow">&#8592;</span> スワイプして続きを見る
@@ -334,11 +370,24 @@ function fireConversion(pixels) {
     if (hint) hint.style.display = 'none';
     hideGesture();
 
-    // 最終ステップ到達時: 大型CTAをオーバーレイ表示
-    if (showFinalLarge && data.to === lp.config.steps.length - 1) {
-      ctaFinal.classList.add('visible');
+    const isFinal = data.to === lp.config.steps.length - 1;
+    // embed_form モード: 最終ステップでフォーム自動表示 (sticky CTAは隠す)
+    if (lp.cta_action_type === 'embed_form') {
+      if (isFinal) {
+        document.getElementById('ctaWrapper').style.display = 'none';
+        if (!formModal.classList.contains('visible')) openFormModal();
+      } else {
+        document.getElementById('ctaWrapper').style.display = '';
+        formModal.classList.remove('visible');
+      }
+      ctaFinal.classList.remove('visible'); // embed_form では大型CTAは出さない
     } else {
-      ctaFinal.classList.remove('visible');
+      // 通常: 最終ステップで大型CTAオーバーレイ
+      if (showFinalLarge && isFinal) {
+        ctaFinal.classList.add('visible');
+      } else {
+        ctaFinal.classList.remove('visible');
+      }
     }
   });
 
@@ -350,8 +399,126 @@ function fireConversion(pixels) {
     }
   });
 
-  // CTAクリック (sticky / 終端大型 共通)
+  // ===== フォーム機能 =====
+  const ctaActionType = lp.cta_action_type || 'url';
+  const formModal = document.getElementById('formModal');
+  const formTitle = document.getElementById('formTitle');
+  const submissionForm = document.getElementById('submissionForm');
+  const formSubmitBtn = document.getElementById('formSubmitBtn');
+  const formError = document.getElementById('formError');
+  const formSuccess = document.getElementById('formSuccess');
+  const formCloseBtn = document.getElementById('formCloseBtn');
+
+  // フォームフィールドの表示/非表示
+  function configureFormFields() {
+    const map = {
+      name: lp.form_show_name !== 0,
+      phone: lp.form_show_phone !== 0,
+      line_id: lp.form_show_line_id === 1,
+      email: lp.form_show_email === 1,
+      message: lp.form_show_message !== 0,
+    };
+    Object.entries(map).forEach(([key, show]) => {
+      const f = submissionForm.querySelector(`.form-field[data-field="${key}"]`);
+      if (!f) return;
+      if (show) {
+        f.classList.remove('hidden');
+        // name と phone は実質必須にする (空NG)
+        const input = f.querySelector('input, textarea');
+        if (input) input.required = (key === 'name' || key === 'phone');
+      } else {
+        f.classList.add('hidden');
+      }
+    });
+    // ラベル文言
+    if (lp.form_submit_label) formSubmitBtn.textContent = lp.form_submit_label;
+    else formSubmitBtn.textContent = lp.cta_text || '送信する';
+    formTitle.textContent = lp.cta_text || 'お申し込み';
+  }
+  configureFormFields();
+
+  // 埋め込みモード時は最終ステップ到達で常時表示
+  if (ctaActionType === 'embed_form') {
+    formModal.classList.add('embed-mode');
+  }
+
+  function openFormModal() {
+    formModal.classList.add('visible');
+    formError.style.display = 'none';
+    formSuccess.style.display = 'none';
+    submissionForm.style.display = '';
+    tracker.trackCtaClick(engine.getCurrentIndex());  // CTAクリックとして計測
+  }
+  function closeFormModal() {
+    formModal.classList.remove('visible');
+  }
+  formCloseBtn.addEventListener('click', closeFormModal);
+  formModal.addEventListener('click', (e) => {
+    if (e.target === formModal) closeFormModal();
+  });
+
+  // フォーム送信
+  submissionForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.style.display = 'none';
+    formSubmitBtn.disabled = true;
+    const originalLabel = formSubmitBtn.textContent;
+    formSubmitBtn.textContent = '送信中...';
+
+    const fd = new FormData(submissionForm);
+    const payload = {
+      name: fd.get('name') || null,
+      phone: fd.get('phone') || null,
+      line_id: fd.get('line_id') || null,
+      email: fd.get('email') || null,
+      message: fd.get('message') || null,
+      // UTM とリファラ
+      utm_source: getQueryParam('utm_source'),
+      utm_medium: getQueryParam('utm_medium'),
+      utm_campaign: getQueryParam('utm_campaign'),
+      utm_content: getQueryParam('utm_content'),
+      referrer: document.referrer || '',
+    };
+
+    try {
+      const res = await fetch(`/api/submit/${lp.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        formError.textContent = data.error || '送信に失敗しました';
+        formError.style.display = '';
+        return;
+      }
+      // 成功 → ピクセル発火 + 成功画面
+      fireConversion(lp.config.pixels || {});
+      const successText = document.querySelector('.form-success-text');
+      if (successText) successText.textContent = data.success_message || 'ありがとうございました。担当者よりご連絡いたします。';
+      submissionForm.style.display = 'none';
+      formSuccess.style.display = '';
+    } catch (e2) {
+      formError.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
+      formError.style.display = '';
+    } finally {
+      formSubmitBtn.disabled = false;
+      formSubmitBtn.textContent = originalLabel;
+    }
+  });
+
+  function getQueryParam(key) {
+    const p = new URLSearchParams(window.location.search);
+    return p.get(key) || null;
+  }
+
+  // CTAクリック (sticky / 終端大型 共通) - cta_action_type で挙動切り替え
   function handleCtaClick() {
+    if (ctaActionType === 'modal_form' || ctaActionType === 'embed_form') {
+      openFormModal();
+      return;
+    }
+    // url モード (デフォルト)
     tracker.trackCtaClick(engine.getCurrentIndex());
     fireConversion(lp.config.pixels || {});
     if (lp.cta_url && lp.cta_url !== '#') {
@@ -360,6 +527,7 @@ function fireConversion(pixels) {
   }
   ctaBtn.addEventListener('click', handleCtaClick);
   ctaFinalBtn.addEventListener('click', handleCtaClick);
+
 
   // ナビ矢印
   document.getElementById('navPrev').addEventListener('click', (e) => {

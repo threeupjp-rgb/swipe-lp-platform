@@ -24,7 +24,10 @@ router.get('/lps/:lpId', (req, res) => {
 // LP新規作成
 router.post('/lps', (req, res) => {
   const { name, slug, config, cta_text, cta_url,
-    cta_microcopy, cta_color, cta_color_custom, cta_show_final_large } = req.body;
+    cta_microcopy, cta_color, cta_color_custom, cta_show_final_large,
+    cta_action_type, form_show_name, form_show_phone, form_show_line_id,
+    form_show_email, form_show_message, form_submit_label,
+    form_success_message, form_notify_email } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
@@ -38,15 +41,27 @@ router.post('/lps', (req, res) => {
   const id = crypto.randomUUID();
   req.db.prepare(`
     INSERT INTO lps (id, name, slug, config, cta_text, cta_url,
-      cta_microcopy, cta_color, cta_color_custom, cta_show_final_large)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      cta_microcopy, cta_color, cta_color_custom, cta_show_final_large,
+      cta_action_type, form_show_name, form_show_phone, form_show_line_id,
+      form_show_email, form_show_message, form_submit_label,
+      form_success_message, form_notify_email)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, name, slug, JSON.stringify(config),
     cta_text || 'お問い合わせ', cta_url || '#',
     cta_microcopy || null,
     cta_color || 'line-green',
     cta_color_custom || null,
-    cta_show_final_large === false ? 0 : 1
+    cta_show_final_large === false ? 0 : 1,
+    cta_action_type || 'url',
+    form_show_name === false ? 0 : 1,
+    form_show_phone === false ? 0 : 1,
+    form_show_line_id ? 1 : 0,
+    form_show_email ? 1 : 0,
+    form_show_message === false ? 0 : 1,
+    form_submit_label || null,
+    form_success_message || null,
+    form_notify_email || null
   );
 
   res.json({ id, slug, url: `/lp/${slug}` });
@@ -80,6 +95,25 @@ router.put('/lps/:lpId', (req, res) => {
   if (cta_color !== undefined) { updates.push('cta_color = ?'); params.push(cta_color || 'line-green'); }
   if (cta_color_custom !== undefined) { updates.push('cta_color_custom = ?'); params.push(cta_color_custom || null); }
   if (cta_show_final_large !== undefined) { updates.push('cta_show_final_large = ?'); params.push(cta_show_final_large ? 1 : 0); }
+
+  // フォーム設定
+  const { cta_action_type, form_show_name, form_show_phone, form_show_line_id,
+    form_show_email, form_show_message, form_submit_label,
+    form_success_message, form_notify_email } = req.body;
+  if (cta_action_type !== undefined) {
+    if (!['url', 'modal_form', 'embed_form'].includes(cta_action_type)) {
+      return res.status(400).json({ error: 'cta_action_type は url / modal_form / embed_form のいずれか' });
+    }
+    updates.push('cta_action_type = ?'); params.push(cta_action_type);
+  }
+  if (form_show_name !== undefined) { updates.push('form_show_name = ?'); params.push(form_show_name ? 1 : 0); }
+  if (form_show_phone !== undefined) { updates.push('form_show_phone = ?'); params.push(form_show_phone ? 1 : 0); }
+  if (form_show_line_id !== undefined) { updates.push('form_show_line_id = ?'); params.push(form_show_line_id ? 1 : 0); }
+  if (form_show_email !== undefined) { updates.push('form_show_email = ?'); params.push(form_show_email ? 1 : 0); }
+  if (form_show_message !== undefined) { updates.push('form_show_message = ?'); params.push(form_show_message ? 1 : 0); }
+  if (form_submit_label !== undefined) { updates.push('form_submit_label = ?'); params.push(form_submit_label || null); }
+  if (form_success_message !== undefined) { updates.push('form_success_message = ?'); params.push(form_success_message || null); }
+  if (form_notify_email !== undefined) { updates.push('form_notify_email = ?'); params.push(form_notify_email || null); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 
@@ -210,6 +244,28 @@ router.patch('/lps/:lpId/notify-settings', (req, res) => {
 
   params.push(req.params.lpId);
   req.db.prepare(`UPDATE lps SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  res.json({ success: true });
+});
+
+// 応募一覧 (LP毎、新しい順)
+router.get('/submissions/:lpId', (req, res) => {
+  const lp = req.db.prepare('SELECT id, name FROM lps WHERE id = ? OR slug = ?').get(req.params.lpId, req.params.lpId);
+  if (!lp) return res.status(404).json({ error: 'LP not found' });
+
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const offset = parseInt(req.query.offset) || 0;
+  const rows = req.db.prepare(`
+    SELECT * FROM submissions WHERE lp_id = ? ORDER BY submitted_at DESC LIMIT ? OFFSET ?
+  `).all(lp.id, limit, offset);
+  const total = req.db.prepare('SELECT COUNT(*) as c FROM submissions WHERE lp_id = ?').get(lp.id).c;
+  res.json({ submissions: rows, total, lp_name: lp.name });
+});
+
+// 応募1件削除 (誤送信・テスト時のクリーンアップ用)
+router.delete('/submissions/:id', (req, res) => {
+  const sub = req.db.prepare('SELECT id FROM submissions WHERE id = ?').get(req.params.id);
+  if (!sub) return res.status(404).json({ error: 'Submission not found' });
+  req.db.prepare('DELETE FROM submissions WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 

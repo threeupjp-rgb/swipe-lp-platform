@@ -322,6 +322,201 @@ body.dir-vertical { touch-action: pan-x; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ========== 応募フォーム ========== */
+.form-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.form-modal.visible {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+.form-modal.visible .form-modal-card {
+  animation: formRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 埋め込み版: 最終ステップに直接配置 */
+.form-modal.embed-mode {
+  position: fixed;
+  inset: 0;
+  align-items: flex-end;
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,0.45) 35%,
+    rgba(0,0,0,0.85) 100%);
+}
+
+.form-modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 20px 20px 16px 16px;
+  padding: 22px 20px 20px;
+  position: relative;
+  max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.4);
+  color: #1a1a1a;
+}
+
+.form-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #999;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background 0.15s, color 0.15s;
+}
+.form-close:hover { background: #f5f5f5; color: #333; }
+
+.form-title {
+  font-size: 19px;
+  font-weight: 900;
+  margin: 0 0 16px;
+  color: #1a1a1a;
+  padding-right: 32px;
+  letter-spacing: 0.5px;
+}
+
+.form-field {
+  margin-bottom: 12px;
+}
+.form-field.hidden { display: none; }
+
+.form-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: #333;
+}
+.form-field .req {
+  color: #ef4444;
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;  /* iOS Safariでzoomされないように16px必須 */
+  font-family: inherit;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: border-color 0.15s, background 0.15s;
+  box-sizing: border-box;
+}
+.form-field input:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--cta-primary, #06C755);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+}
+.form-field textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.form-submit-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px 24px;
+  font-size: 17px;
+  font-weight: 900;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(135deg, var(--cta-primary, #06C755), var(--cta-secondary, #00b848));
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px var(--cta-glow, rgba(6,199,85,0.5));
+  letter-spacing: 0.5px;
+  transition: transform 0.12s, box-shadow 0.2s;
+}
+.form-submit-btn:hover:not(:disabled) {
+  box-shadow: 0 8px 28px var(--cta-glow-strong, rgba(6,199,85,0.7));
+}
+.form-submit-btn:active:not(:disabled) { transform: scale(0.98); }
+.form-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-error {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.form-success {
+  text-align: center;
+  padding: 32px 16px 24px;
+}
+.form-success-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 900;
+  box-shadow: 0 8px 24px rgba(16,185,129,0.35);
+  animation: successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.form-success-text {
+  font-size: 16px;
+  color: #1a1a1a;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@keyframes formRise {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes successPop {
+  0% { opacity: 0; transform: scale(0.3); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* embed mode: 最終ステップ用、ボタンスタイル少し控えめ */
+.form-modal.embed-mode .form-modal-card {
+  margin-bottom: 0;
+}
+
 /* スワイプヒント（初回表示） */
 .swipe-hint {
   position: fixed;

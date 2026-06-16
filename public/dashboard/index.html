@@ -66,6 +66,7 @@
     <button class="tab" data-tab="funnel">ファネル</button>
     <button class="tab" data-tab="sessions">セッション</button>
     <button class="tab" data-tab="attribution">流入元分析</button>
+    <button class="tab" data-tab="submissions">📨 応募</button>
   </div>
 
   <!-- === 概要タブ === -->
@@ -219,6 +220,20 @@
       <div id="sessionListContainer"></div>
     </div>
   </div>
+
+  <!-- === 応募タブ === -->
+  <div class="tab-content" id="tab-submissions">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">応募一覧</div>
+          <div class="card-subtitle" id="submissionsCount">読み込み中...</div>
+        </div>
+        <button class="btn btn-ghost" onclick="exportSubmissionsCSV()">CSV エクスポート</button>
+      </div>
+      <div id="submissionsList"></div>
+    </div>
+  </div>
 </main>
 
 <!-- セッション詳細モーダル -->
@@ -311,6 +326,55 @@
             <span>最終ステップで大型CTAをオーバーレイ表示</span>
           </label>
           <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;margin-left:26px;">最後まで読んだユーザーに見逃させないCTA</small>
+        </div>
+      </div>
+
+      <!-- フォーム機能 -->
+      <div class="form-section">
+        <h4 class="form-section-title">CTAアクション</h4>
+        <div class="form-row">
+          <label>CTAを押した時の動作</label>
+          <select id="createCtaActionType" onchange="toggleCreateFormSection()">
+            <option value="url">外部URLに遷移 (デフォルト)</option>
+            <option value="modal_form">モーダルでフォーム表示 (LP内で完結)</option>
+            <option value="embed_form">最終ステップでフォーム自動表示</option>
+          </select>
+        </div>
+        <div id="createFormFieldsBox" style="display:none;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:8px;background:rgba(99,102,241,0.04);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">表示するフィールド</div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="createFormShowName" style="width:18px;height:18px;" checked>
+            <span>お名前 (必須項目)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="createFormShowPhone" style="width:18px;height:18px;" checked>
+            <span>電話番号 (必須項目)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="createFormShowLineId" style="width:18px;height:18px;">
+            <span>LINE ID</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="createFormShowEmail" style="width:18px;height:18px;">
+            <span>メールアドレス</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:12px;">
+            <input type="checkbox" id="createFormShowMessage" style="width:18px;height:18px;" checked>
+            <span>メッセージ・自由入力</span>
+          </label>
+          <div class="form-row">
+            <label>送信ボタンの文言 (空欄ならCTA文言を流用)</label>
+            <input type="text" id="createFormSubmitLabel" placeholder="例: 応募する">
+          </div>
+          <div class="form-row">
+            <label>送信後の完了メッセージ</label>
+            <input type="text" id="createFormSuccessMessage" placeholder="例: ありがとうございました。24時間以内にご連絡します。">
+          </div>
+          <div class="form-row">
+            <label>📧 通知先メールアドレス (応募が入ったらここに通知)</label>
+            <input type="email" id="createFormNotifyEmail" placeholder="例: info@example.com">
+            <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">空欄ならメール通知なし</small>
+          </div>
         </div>
       </div>
 
@@ -430,6 +494,55 @@
             <span>最終ステップで大型CTAをオーバーレイ表示</span>
           </label>
           <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;margin-left:26px;">最後まで読んだユーザーに見逃させないCTA</small>
+        </div>
+      </div>
+
+      <!-- フォーム機能 -->
+      <div class="form-section">
+        <h4 class="form-section-title">CTAアクション</h4>
+        <div class="form-row">
+          <label>CTAを押した時の動作</label>
+          <select id="editCtaActionType" onchange="toggleEditFormSection()">
+            <option value="url">外部URLに遷移 (デフォルト)</option>
+            <option value="modal_form">モーダルでフォーム表示 (LP内で完結)</option>
+            <option value="embed_form">最終ステップでフォーム自動表示</option>
+          </select>
+        </div>
+        <div id="editFormFieldsBox" style="display:none;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:8px;background:rgba(99,102,241,0.04);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">表示するフィールド</div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="editFormShowName" style="width:18px;height:18px;" checked>
+            <span>お名前 (必須項目)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="editFormShowPhone" style="width:18px;height:18px;" checked>
+            <span>電話番号 (必須項目)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="editFormShowLineId" style="width:18px;height:18px;">
+            <span>LINE ID</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
+            <input type="checkbox" id="editFormShowEmail" style="width:18px;height:18px;">
+            <span>メールアドレス</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:12px;">
+            <input type="checkbox" id="editFormShowMessage" style="width:18px;height:18px;" checked>
+            <span>メッセージ・自由入力</span>
+          </label>
+          <div class="form-row">
+            <label>送信ボタンの文言 (空欄ならCTA文言を流用)</label>
+            <input type="text" id="editFormSubmitLabel" placeholder="例: 応募する">
+          </div>
+          <div class="form-row">
+            <label>送信後の完了メッセージ</label>
+            <input type="text" id="editFormSuccessMessage" placeholder="例: ありがとうございました。24時間以内にご連絡します。">
+          </div>
+          <div class="form-row">
+            <label>📧 通知先メールアドレス (応募が入ったらここに通知)</label>
+            <input type="email" id="editFormNotifyEmail" placeholder="例: info@example.com">
+            <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">空欄ならメール通知なし (応募はダッシュボードで確認可)</small>
+          </div>
         </div>
       </div>
 

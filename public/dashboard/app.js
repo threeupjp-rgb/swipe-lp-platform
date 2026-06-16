@@ -361,6 +361,7 @@ async function loadTabData() {
     case 'funnel': await loadFunnel(); break;
     case 'sessions': await loadSessions(); break;
     case 'attribution': await loadAttribution(); break;
+    case 'submissions': await loadSubmissions(); break;
   }
 
   updateTimestamp();
@@ -618,6 +619,16 @@ function openCreateLP() {
   document.getElementById('createCtaCustomRow').style.display = 'none';
   document.getElementById('createCtaMicrocopy').value = '';
   document.getElementById('createCtaShowFinalLarge').checked = true;
+  document.getElementById('createCtaActionType').value = 'url';
+  document.getElementById('createFormFieldsBox').style.display = 'none';
+  document.getElementById('createFormShowName').checked = true;
+  document.getElementById('createFormShowPhone').checked = true;
+  document.getElementById('createFormShowLineId').checked = false;
+  document.getElementById('createFormShowEmail').checked = false;
+  document.getElementById('createFormShowMessage').checked = true;
+  document.getElementById('createFormSubmitLabel').value = '';
+  document.getElementById('createFormSuccessMessage').value = '';
+  document.getElementById('createFormNotifyEmail').value = '';
   document.getElementById('createPixelMeta').value = '';
   document.getElementById('createPixelTiktok').value = '';
   document.getElementById('createPixelGoogle').value = '';
@@ -636,6 +647,16 @@ function toggleCreateCtaCustom() {
 function toggleEditCtaCustom() {
   const sel = document.getElementById('editCtaColor').value;
   document.getElementById('editCtaCustomRow').style.display = sel === 'custom' ? '' : 'none';
+}
+
+function toggleCreateFormSection() {
+  const sel = document.getElementById('createCtaActionType').value;
+  document.getElementById('createFormFieldsBox').style.display = sel === 'url' ? 'none' : '';
+}
+
+function toggleEditFormSection() {
+  const sel = document.getElementById('editCtaActionType').value;
+  document.getElementById('editFormFieldsBox').style.display = sel === 'url' ? 'none' : '';
 }
 
 function closeCreateLP() {
@@ -783,6 +804,7 @@ async function submitCreateLP() {
   const ctaColorCustom = ctaColor === 'custom' ? document.getElementById('createCtaColorCustom').value : null;
   const ctaMicrocopy = document.getElementById('createCtaMicrocopy').value.trim();
   const ctaShowFinalLarge = document.getElementById('createCtaShowFinalLarge').checked;
+  const ctaActionType = document.getElementById('createCtaActionType').value;
 
   try {
     const res = await fetch('/api/lps', {
@@ -797,7 +819,16 @@ async function submitCreateLP() {
         cta_color: ctaColor,
         cta_color_custom: ctaColorCustom,
         cta_microcopy: ctaMicrocopy || null,
-        cta_show_final_large: ctaShowFinalLarge
+        cta_show_final_large: ctaShowFinalLarge,
+        cta_action_type: ctaActionType,
+        form_show_name: document.getElementById('createFormShowName').checked,
+        form_show_phone: document.getElementById('createFormShowPhone').checked,
+        form_show_line_id: document.getElementById('createFormShowLineId').checked,
+        form_show_email: document.getElementById('createFormShowEmail').checked,
+        form_show_message: document.getElementById('createFormShowMessage').checked,
+        form_submit_label: document.getElementById('createFormSubmitLabel').value.trim() || null,
+        form_success_message: document.getElementById('createFormSuccessMessage').value.trim() || null,
+        form_notify_email: document.getElementById('createFormNotifyEmail').value.trim() || null
       })
     });
     const data = await res.json();
@@ -844,6 +875,19 @@ async function openEditLP() {
   document.getElementById('editCtaCustomRow').style.display = ctaColor === 'custom' ? '' : 'none';
   document.getElementById('editCtaMicrocopy').value = editLpData.cta_microcopy || '';
   document.getElementById('editCtaShowFinalLarge').checked = editLpData.cta_show_final_large !== 0;
+
+  // フォーム設定
+  const actionType = editLpData.cta_action_type || 'url';
+  document.getElementById('editCtaActionType').value = actionType;
+  document.getElementById('editFormFieldsBox').style.display = actionType === 'url' ? 'none' : '';
+  document.getElementById('editFormShowName').checked = editLpData.form_show_name !== 0;
+  document.getElementById('editFormShowPhone').checked = editLpData.form_show_phone !== 0;
+  document.getElementById('editFormShowLineId').checked = editLpData.form_show_line_id === 1;
+  document.getElementById('editFormShowEmail').checked = editLpData.form_show_email === 1;
+  document.getElementById('editFormShowMessage').checked = editLpData.form_show_message !== 0;
+  document.getElementById('editFormSubmitLabel').value = editLpData.form_submit_label || '';
+  document.getElementById('editFormSuccessMessage').value = editLpData.form_success_message || '';
+  document.getElementById('editFormNotifyEmail').value = editLpData.form_notify_email || '';
 
   // ピクセル
   const pixels = config.pixels || {};
@@ -1020,6 +1064,7 @@ async function submitEditLP() {
   const ctaColorCustom = ctaColor === 'custom' ? document.getElementById('editCtaColorCustom').value : null;
   const ctaMicrocopy = document.getElementById('editCtaMicrocopy').value.trim();
   const ctaShowFinalLarge = document.getElementById('editCtaShowFinalLarge').checked;
+  const ctaActionType = document.getElementById('editCtaActionType').value;
 
   try {
     const res = await fetch(`/api/lps/${currentLpId}`, {
@@ -1034,7 +1079,16 @@ async function submitEditLP() {
         cta_color: ctaColor,
         cta_color_custom: ctaColorCustom,
         cta_microcopy: ctaMicrocopy || null,
-        cta_show_final_large: ctaShowFinalLarge
+        cta_show_final_large: ctaShowFinalLarge,
+        cta_action_type: ctaActionType,
+        form_show_name: document.getElementById('editFormShowName').checked,
+        form_show_phone: document.getElementById('editFormShowPhone').checked,
+        form_show_line_id: document.getElementById('editFormShowLineId').checked,
+        form_show_email: document.getElementById('editFormShowEmail').checked,
+        form_show_message: document.getElementById('editFormShowMessage').checked,
+        form_submit_label: document.getElementById('editFormSubmitLabel').value.trim() || null,
+        form_success_message: document.getElementById('editFormSuccessMessage').value.trim() || null,
+        form_notify_email: document.getElementById('editFormNotifyEmail').value.trim() || null
       })
     });
     const data = await res.json();
@@ -1128,6 +1182,87 @@ function updateNotifyButtonState(enabled) {
     btn.style.color = '';
     btn.style.borderColor = '';
   }
+}
+
+// ===== 応募一覧タブ =====
+let currentSubmissions = [];
+
+async function loadSubmissions() {
+  const res = await fetch(`${API}/api/submissions/${currentLpId}?limit=200`);
+  if (!res.ok) {
+    document.getElementById('submissionsCount').textContent = '取得失敗';
+    return;
+  }
+  const data = await res.json();
+  currentSubmissions = data.submissions || [];
+  document.getElementById('submissionsCount').textContent = `合計 ${data.total}件`;
+
+  const container = document.getElementById('submissionsList');
+  if (currentSubmissions.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);padding:32px;text-align:center;">まだ応募はありません。<br>LP編集で「CTAアクション」を「モーダルでフォーム表示」or「最終ステップでフォーム自動表示」に変更してください。</p>';
+    return;
+  }
+  container.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);">
+          <th style="padding:10px 12px;text-align:left;">日時</th>
+          <th style="padding:10px 12px;text-align:left;">名前</th>
+          <th style="padding:10px 12px;text-align:left;">電話</th>
+          <th style="padding:10px 12px;text-align:left;">LINE/メール</th>
+          <th style="padding:10px 12px;text-align:left;">メッセージ</th>
+          <th style="padding:10px 12px;text-align:left;">流入元</th>
+          <th style="padding:10px 12px;text-align:right;width:60px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${currentSubmissions.map(s => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 12px;color:var(--text-muted);white-space:nowrap;">${new Date(s.submitted_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })}</td>
+            <td style="padding:10px 12px;font-weight:700;">${escapeHtml(s.name || '-')}</td>
+            <td style="padding:10px 12px;"><a href="tel:${escapeHtml(s.phone || '')}" style="color:var(--primary-light);">${escapeHtml(s.phone || '-')}</a></td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text-secondary);">${[s.line_id, s.email].filter(Boolean).map(escapeHtml).join('<br>') || '-'}</td>
+            <td style="padding:10px 12px;font-size:12px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(s.message || '')}">${escapeHtml(s.message || '-')}</td>
+            <td style="padding:10px 12px;font-size:11px;color:var(--text-muted);">${escapeHtml([s.utm_source, s.utm_campaign].filter(Boolean).join('/') || '-')}</td>
+            <td style="padding:10px 12px;text-align:right;"><button onclick="deleteSubmission(${s.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px;" title="削除">🗑</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function deleteSubmission(id) {
+  if (!confirm('この応募を削除しますか? (取り消せません)')) return;
+  await fetch(`${API}/api/submissions/${id}`, { method: 'DELETE' });
+  loadSubmissions();
+}
+
+function exportSubmissionsCSV() {
+  if (!currentSubmissions || currentSubmissions.length === 0) {
+    alert('エクスポートする応募がありません');
+    return;
+  }
+  const headers = ['日時','名前','電話','LINE_ID','メール','メッセージ','utm_source','utm_medium','utm_campaign','utm_content','referrer'];
+  const rows = currentSubmissions.map(s => [
+    new Date(s.submitted_at).toLocaleString('ja-JP'),
+    s.name || '', s.phone || '', s.line_id || '', s.email || '',
+    (s.message || '').replace(/\n/g, ' '),
+    s.utm_source || '', s.utm_medium || '', s.utm_campaign || '', s.utm_content || '',
+    s.referrer || '',
+  ]);
+  const csv = '﻿' + [headers, ...rows].map(r =>
+    r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `submissions_${currentLpId}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // 流入元分析の軸切り替え
