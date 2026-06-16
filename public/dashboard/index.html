@@ -389,6 +389,26 @@
             <input type="email" id="createFormNotifyEmail" placeholder="例: info@example.com">
             <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">空欄ならメール通知なし</small>
           </div>
+          <div class="form-row">
+            <label>💡 フォーム上部の安心要素 (CVR向上、空欄なら非表示)</label>
+            <input type="text" id="createFormTopMicrocopy" placeholder="例: 30秒で完了 / 完全無料 / 強引な勧誘なし">
+          </div>
+          <div class="form-row">
+            <label>🎯 完了画面の追加CTAボタン文言 (LINE登録などへ誘導)</label>
+            <input type="text" id="createFormSuccessCtaText" placeholder="例: LINE で詳細を確認する">
+          </div>
+          <div class="form-row">
+            <label>🔗 完了画面の追加CTA URL</label>
+            <input type="text" id="createFormSuccessCtaUrl" placeholder="例: https://lin.ee/xxxxxxx">
+            <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">テキストとURLの両方入力で完了画面にボタン表示</small>
+          </div>
+          <div class="form-row">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);">
+              <input type="checkbox" id="createFormMultistep" style="width:18px;height:18px;">
+              <span>⚡ マルチステップ表示 (1画面1質問・進捗バー付き、Typeform風)</span>
+            </label>
+            <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;margin-left:26px;">入力ハードルを下げ、途中離脱を防ぐ高CVRレイアウト</small>
+          </div>
         </div>
       </div>
 
@@ -570,6 +590,26 @@
             <label>📧 通知先メールアドレス (応募が入ったらここに通知)</label>
             <input type="email" id="editFormNotifyEmail" placeholder="例: info@example.com">
             <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">空欄ならメール通知なし (応募はダッシュボードで確認可)</small>
+          </div>
+          <div class="form-row">
+            <label>💡 フォーム上部の安心要素 (CVR向上、空欄なら非表示)</label>
+            <input type="text" id="editFormTopMicrocopy" placeholder="例: 30秒で完了 / 完全無料 / 強引な勧誘なし">
+          </div>
+          <div class="form-row">
+            <label>🎯 完了画面の追加CTAボタン文言 (LINE登録などへ誘導)</label>
+            <input type="text" id="editFormSuccessCtaText" placeholder="例: LINE で詳細を確認する">
+          </div>
+          <div class="form-row">
+            <label>🔗 完了画面の追加CTA URL</label>
+            <input type="text" id="editFormSuccessCtaUrl" placeholder="例: https://lin.ee/xxxxxxx">
+            <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">テキストとURLの両方入力で完了画面にボタン表示</small>
+          </div>
+          <div class="form-row">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);">
+              <input type="checkbox" id="editFormMultistep" style="width:18px;height:18px;">
+              <span>⚡ マルチステップ表示 (1画面1質問・進捗バー付き、Typeform風)</span>
+            </label>
+            <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;margin-left:26px;">入力ハードルを下げ、途中離脱を防ぐ高CVRレイアウト</small>
           </div>
         </div>
       </div>

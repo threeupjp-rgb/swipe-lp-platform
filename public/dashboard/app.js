@@ -633,6 +633,10 @@ function openCreateLP() {
   document.getElementById('createFormSubmitLabel').value = '';
   document.getElementById('createFormSuccessMessage').value = '';
   document.getElementById('createFormNotifyEmail').value = '';
+  document.getElementById('createFormTopMicrocopy').value = '';
+  document.getElementById('createFormSuccessCtaText').value = '';
+  document.getElementById('createFormSuccessCtaUrl').value = '';
+  document.getElementById('createFormMultistep').checked = false;
   document.getElementById('createPixelMeta').value = '';
   document.getElementById('createPixelTiktok').value = '';
   document.getElementById('createPixelGoogle').value = '';
@@ -845,7 +849,11 @@ async function submitCreateLP() {
         form_area_placeholder: document.getElementById('createFormAreaPlaceholder').value.trim() || null,
         form_submit_label: document.getElementById('createFormSubmitLabel').value.trim() || null,
         form_success_message: document.getElementById('createFormSuccessMessage').value.trim() || null,
-        form_notify_email: document.getElementById('createFormNotifyEmail').value.trim() || null
+        form_notify_email: document.getElementById('createFormNotifyEmail').value.trim() || null,
+        form_top_microcopy: document.getElementById('createFormTopMicrocopy').value.trim() || null,
+        form_success_cta_text: document.getElementById('createFormSuccessCtaText').value.trim() || null,
+        form_success_cta_url: document.getElementById('createFormSuccessCtaUrl').value.trim() || null,
+        form_multistep: document.getElementById('createFormMultistep').checked
       })
     });
     const data = await res.json();
@@ -909,6 +917,10 @@ async function openEditLP() {
   document.getElementById('editFormSubmitLabel').value = editLpData.form_submit_label || '';
   document.getElementById('editFormSuccessMessage').value = editLpData.form_success_message || '';
   document.getElementById('editFormNotifyEmail').value = editLpData.form_notify_email || '';
+  document.getElementById('editFormTopMicrocopy').value = editLpData.form_top_microcopy || '';
+  document.getElementById('editFormSuccessCtaText').value = editLpData.form_success_cta_text || '';
+  document.getElementById('editFormSuccessCtaUrl').value = editLpData.form_success_cta_url || '';
+  document.getElementById('editFormMultistep').checked = editLpData.form_multistep === 1;
 
   // ピクセル
   const pixels = config.pixels || {};
@@ -1112,7 +1124,11 @@ async function submitEditLP() {
         form_area_placeholder: document.getElementById('editFormAreaPlaceholder').value.trim() || null,
         form_submit_label: document.getElementById('editFormSubmitLabel').value.trim() || null,
         form_success_message: document.getElementById('editFormSuccessMessage').value.trim() || null,
-        form_notify_email: document.getElementById('editFormNotifyEmail').value.trim() || null
+        form_notify_email: document.getElementById('editFormNotifyEmail').value.trim() || null,
+        form_top_microcopy: document.getElementById('editFormTopMicrocopy').value.trim() || null,
+        form_success_cta_text: document.getElementById('editFormSuccessCtaText').value.trim() || null,
+        form_success_cta_url: document.getElementById('editFormSuccessCtaUrl').value.trim() || null,
+        form_multistep: document.getElementById('editFormMultistep').checked
       })
     });
     const data = await res.json();

@@ -75,6 +75,10 @@ const lpFormCols = [
   ['form_show_area', 'INTEGER DEFAULT 0'],        // エリア欄表示ON/OFF
   ['form_area_label', 'TEXT'],                    // null なら「ご希望のエリア」
   ['form_area_placeholder', 'TEXT'],              // null なら「例: 梅田、難波」
+  ['form_top_microcopy', 'TEXT'],                 // フォーム上部の安心要素 (例:「30秒で完了・無料・勧誘なし」)
+  ['form_success_cta_text', 'TEXT'],              // 完了画面の追加CTAボタン文言 (例:「LINEで詳細を確認する」)
+  ['form_success_cta_url', 'TEXT'],               // 完了画面の追加CTA URL
+  ['form_multistep', 'INTEGER DEFAULT 0'],        // マルチステップ表示 (1画面1質問のTypeform風)
 ];
 for (const [col, def] of lpFormCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}

@@ -48,14 +48,21 @@
   <div class="form-modal-card">
     <button type="button" class="form-close" id="formCloseBtn" aria-label="閉じる">×</button>
     <h3 class="form-title" id="formTitle">お申し込み</h3>
+    <!-- フォーム上部の安心要素 (LP毎カスタム可、空欄なら非表示) -->
+    <div class="form-top-microcopy" id="formTopMicrocopy" style="display:none;"></div>
+    <!-- マルチステップ進捗バー (multistep モードのみ表示) -->
+    <div class="form-progress" id="formProgress" style="display:none;">
+      <div class="form-progress-bar" id="formProgressBar"></div>
+      <div class="form-progress-text" id="formProgressText">1 / 5</div>
+    </div>
     <form id="submissionForm" novalidate>
       <div class="form-field" data-field="name">
-        <label>お名前 <span class="req">*</span></label>
-        <input type="text" name="name" autocomplete="name" required>
+        <label>お名前</label>
+        <input type="text" name="name" autocomplete="name">
       </div>
       <div class="form-field" data-field="phone">
-        <label>電話番号 <span class="req">*</span></label>
-        <input type="tel" name="phone" inputmode="tel" autocomplete="tel" placeholder="例: 090-1234-5678">
+        <label>電話番号</label>
+        <input type="tel" name="phone" inputmode="tel" autocomplete="tel" placeholder="例: 090-1234-5678" maxlength="13">
       </div>
       <div class="form-field" data-field="line_id">
         <label>LINE ID</label>
@@ -73,12 +80,21 @@
         <label>メッセージ・ご質問</label>
         <textarea name="message" rows="3" placeholder="ご自由にどうぞ"></textarea>
       </div>
-      <button type="submit" class="form-submit-btn" id="formSubmitBtn">送信する</button>
+      <!-- ナビゲーション (multistep 用、通常モードでは "送信" のみ表示) -->
+      <div class="form-nav">
+        <button type="button" class="form-back-btn" id="formBackBtn" style="display:none;">← 戻る</button>
+        <button type="button" class="form-next-btn" id="formNextBtn" style="display:none;">次へ →</button>
+        <button type="submit" class="form-submit-btn" id="formSubmitBtn">
+          <span class="form-submit-label">送信する</span>
+          <span class="form-submit-spinner" aria-hidden="true"></span>
+        </button>
+      </div>
       <div class="form-error" id="formError" style="display:none;"></div>
     </form>
     <div class="form-success" id="formSuccess" style="display:none;">
       <div class="form-success-icon">✓</div>
       <div class="form-success-text">ありがとうございました。</div>
+      <a class="form-success-cta" id="formSuccessCta" href="#" style="display:none;" target="_blank" rel="noopener noreferrer"></a>
     </div>
   </div>
 </div>
@@ -409,9 +425,56 @@ function fireConversion(pixels) {
   const formTitle = document.getElementById('formTitle');
   const submissionForm = document.getElementById('submissionForm');
   const formSubmitBtn = document.getElementById('formSubmitBtn');
+  const formSubmitLabel = formSubmitBtn.querySelector('.form-submit-label');
   const formError = document.getElementById('formError');
   const formSuccess = document.getElementById('formSuccess');
   const formCloseBtn = document.getElementById('formCloseBtn');
+  const formTopMicrocopy = document.getElementById('formTopMicrocopy');
+  const formNextBtn = document.getElementById('formNextBtn');
+  const formBackBtn = document.getElementById('formBackBtn');
+  const formProgress = document.getElementById('formProgress');
+  const formProgressBar = document.getElementById('formProgressBar');
+  const formProgressText = document.getElementById('formProgressText');
+  const formSuccessCta = document.getElementById('formSuccessCta');
+
+  const isMultistep = lp.form_multistep === 1;
+  if (isMultistep) formModal.classList.add('multistep');
+
+  // フォーム上部の安心要素
+  if (lp.form_top_microcopy && lp.form_top_microcopy.trim()) {
+    formTopMicrocopy.textContent = lp.form_top_microcopy;
+    formTopMicrocopy.style.display = '';
+  }
+
+  // 完了画面の追加CTA
+  if (lp.form_success_cta_text && lp.form_success_cta_url) {
+    formSuccessCta.textContent = lp.form_success_cta_text;
+    formSuccessCta.href = lp.form_success_cta_url;
+    formSuccessCta.style.display = '';
+  }
+
+  // 電話番号の自動ハイフン (日本の携帯番号 09012345678 → 090-1234-5678)
+  const phoneInput = submissionForm.querySelector('input[name="phone"]');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/[^\d]/g, '');
+      // 携帯番号 090/080/070-XXXX-XXXX
+      if (v.length > 11) v = v.slice(0, 11);
+      if (/^0[789]0/.test(v)) {
+        if (v.length > 7) v = v.slice(0, 3) + '-' + v.slice(3, 7) + '-' + v.slice(7);
+        else if (v.length > 3) v = v.slice(0, 3) + '-' + v.slice(3);
+      } else if (/^0(3|6)/.test(v)) {
+        // 03/06-XXXX-XXXX (東京/大阪市内)
+        if (v.length > 6) v = v.slice(0, 2) + '-' + v.slice(2, 6) + '-' + v.slice(6);
+        else if (v.length > 2) v = v.slice(0, 2) + '-' + v.slice(2);
+      } else if (v.length > 0) {
+        // その他はそのまま (国際番号や固定電話)
+        if (v.length > 6) v = v.slice(0, 4) + '-' + v.slice(4, 8) + '-' + v.slice(8);
+        else if (v.length > 4) v = v.slice(0, 4) + '-' + v.slice(4);
+      }
+      e.target.value = v;
+    });
+  }
 
   // フォームフィールドの表示/非表示
   function configureFormFields() {
@@ -461,8 +524,8 @@ function fireConversion(pixels) {
     }
 
     // ラベル文言
-    if (lp.form_submit_label) formSubmitBtn.textContent = lp.form_submit_label;
-    else formSubmitBtn.textContent = lp.cta_text || '送信する';
+    if (lp.form_submit_label) formSubmitLabel.textContent = lp.form_submit_label;
+    else formSubmitLabel.textContent = lp.cta_text || '送信する';
     formTitle.textContent = lp.cta_text || 'お申し込み';
   }
   configureFormFields();
@@ -472,11 +535,60 @@ function fireConversion(pixels) {
     formModal.classList.add('embed-mode');
   }
 
+  // マルチステップ管理
+  let visibleFields = [];
+  let currentStepIndex = 0;
+
+  function showStep(index) {
+    if (!isMultistep) return;
+    visibleFields = Array.from(submissionForm.querySelectorAll('.form-field:not(.hidden)'))
+      .map(f => f.dataset.field);
+    currentStepIndex = Math.max(0, Math.min(index, visibleFields.length - 1));
+
+    submissionForm.querySelectorAll('.form-field').forEach(f => {
+      f.classList.remove('step-current');
+      if (!f.classList.contains('hidden')) f.style.display = 'none';
+    });
+    const currentField = visibleFields[currentStepIndex];
+    const target = submissionForm.querySelector(`.form-field[data-field="${currentField}"]`);
+    if (target) {
+      target.style.display = '';
+      target.classList.add('step-current');
+      setTimeout(() => {
+        const input = target.querySelector('input, textarea');
+        if (input) input.focus();
+      }, 100);
+    }
+    const isLast = currentStepIndex === visibleFields.length - 1;
+    formBackBtn.style.display = currentStepIndex === 0 ? 'none' : '';
+    formNextBtn.style.display = isLast ? 'none' : '';
+    formSubmitBtn.style.display = isLast ? '' : 'none';
+    const pct = ((currentStepIndex + 1) / visibleFields.length) * 100;
+    formProgressBar.style.setProperty('--progress', pct + '%');
+    formProgressText.textContent = `${currentStepIndex + 1} / ${visibleFields.length}`;
+    formProgress.style.display = '';
+  }
+
+  function nextStep() {
+    const currentField = visibleFields[currentStepIndex];
+    const input = submissionForm.querySelector(`.form-field[data-field="${currentField}"] input, .form-field[data-field="${currentField}"] textarea`);
+    if (input && input.required && !input.value.trim()) {
+      input.focus();
+      input.reportValidity();
+      return;
+    }
+    showStep(currentStepIndex + 1);
+  }
+  function prevStep() { showStep(currentStepIndex - 1); }
+  formNextBtn.addEventListener('click', nextStep);
+  formBackBtn.addEventListener('click', prevStep);
+
   function openFormModal() {
     formModal.classList.add('visible');
     formError.style.display = 'none';
     formSuccess.style.display = 'none';
     submissionForm.style.display = '';
+    if (isMultistep) showStep(0);
     tracker.trackCtaClick(engine.getCurrentIndex());  // CTAクリックとして計測
   }
   function closeFormModal() {
@@ -492,8 +604,9 @@ function fireConversion(pixels) {
     e.preventDefault();
     formError.style.display = 'none';
     formSubmitBtn.disabled = true;
-    const originalLabel = formSubmitBtn.textContent;
-    formSubmitBtn.textContent = '送信中...';
+    formSubmitBtn.classList.add('loading');
+    const originalLabel = formSubmitLabel.textContent;
+    formSubmitLabel.textContent = '送信中...';
 
     const fd = new FormData(submissionForm);
     const payload = {
@@ -534,7 +647,8 @@ function fireConversion(pixels) {
       formError.style.display = '';
     } finally {
       formSubmitBtn.disabled = false;
-      formSubmitBtn.textContent = originalLabel;
+      formSubmitBtn.classList.remove('loading');
+      formSubmitLabel.textContent = originalLabel;
     }
   });
 
