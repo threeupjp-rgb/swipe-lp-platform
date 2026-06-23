@@ -264,7 +264,7 @@ body.dir-vertical { touch-action: pan-x; }
 .cta-final.visible {
   display: flex;
   opacity: 1;
-  pointer-events: auto;
+  /* 注: pointer-events は auto にしない。背景はスワイプ操作を通す */
 }
 .cta-final.visible .cta-final-card {
   animation: ctaFinalRise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -278,6 +278,7 @@ body.dir-vertical { touch-action: pan-x; }
   align-items: center;
   gap: 14px;
   margin-top: auto;
+  pointer-events: auto;  /* カードだけ操作可能 (背景はスワイプ通す) */
 }
 
 .cta-final-headline {
