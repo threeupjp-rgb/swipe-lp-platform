@@ -43,8 +43,11 @@ router.post('/events', (req, res) => {
   }
 
   const s = getStmts(req.db);
-  const insertMany = req.db.transaction((items) => {
-    for (const evt of items) {
+  // node:sqlite の DatabaseSync には better-sqlite3 のような .transaction() が無いため、
+  // 明示的に BEGIN/COMMIT でバッチを1トランザクションにまとめる（原子的＆高速）。
+  req.db.exec('BEGIN');
+  try {
+    for (const evt of events) {
       s.insertEvent.run(
         sessionId,
         lpId,
@@ -54,8 +57,11 @@ router.post('/events', (req, res) => {
         evt.timestamp ? new Date(evt.timestamp).toISOString() : new Date().toISOString()
       );
     }
-  });
-  insertMany(events);
+    req.db.exec('COMMIT');
+  } catch (e) {
+    try { req.db.exec('ROLLBACK'); } catch (_) {}
+    throw e;
+  }
 
   res.json({ ok: true, count: events.length });
 });
