@@ -99,26 +99,40 @@
   </div>
 </div>
 
-<!-- スワイプヒント（テキスト版） -->
-<div class="swipe-hint" id="swipeHint">
-  <span class="arrow">&#8592;</span> スワイプして続きを見る
-</div>
-
-<!-- 改善1: スワイプ誘導ジェスチャー -->
-<div class="swipe-gesture-hint" id="gestureHint">
-  <div class="gesture-hand">
-    <div class="gesture-circle"></div>
-    <div class="gesture-arrow"></div>
-  </div>
-  <div class="gesture-text">スワイプして次へ</div>
-</div>
-
-<!-- 改善2: 残りステップカウントダウン -->
+<!-- 残りステップカウントダウン -->
 <div class="step-remaining" id="stepRemaining"></div>
 
 <script src="/viewer/swipe-engine.js"></script>
 <script src="/viewer/tracker.js"></script>
 <script>
+// ===== ピクセル共通ヘルパー =====
+function _slpGetCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function _slpSetCookie(name, value, maxAgeSec) {
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${encodeURIComponent(value)}; Max-Age=${maxAgeSec}; Path=/; SameSite=Lax${secure}`;
+}
+// fbclid (Meta広告クリックID) を URL から取得し _fbc クッキーに 90日保存
+function _slpEnsureFbcFromFbclid() {
+  const params = new URLSearchParams(window.location.search);
+  const fbclid = params.get('fbclid');
+  if (!fbclid) return;
+  // 既に有効な _fbc がある場合は上書きしない
+  if (_slpGetCookie('_fbc')) return;
+  const value = `fb.1.${Date.now()}.${fbclid}`;
+  _slpSetCookie('_fbc', value, 60 * 60 * 24 * 90); // 90日
+}
+function _slpGetFbp() { return _slpGetCookie('_fbp'); }
+function _slpGetFbc() { return _slpGetCookie('_fbc'); }
+function _slpGenEventId() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'e_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+}
+// 即時実行: fbclid を URL から拾って _fbc クッキー保存
+_slpEnsureFbcFromFbclid();
+
 // ===== 広告ピクセル管理 =====
 function initPixels(pixels) {
   // Meta (Facebook) Pixel
@@ -180,10 +194,32 @@ function initPixels(pixels) {
   }
 }
 
-function fireConversion(pixels) {
-  // Meta: Lead / Purchase イベント
+function fireConversion(pixels, opts = {}) {
+  // event_id を統一してブラウザ fbq とサーバー CAPI を重複排除
+  const eventId = opts.eventId || _slpGenEventId();
+  const externalId = opts.externalId || null;
+
+  // Meta: Lead イベント (eventID 指定でCAPIと重複排除)
   if (pixels.meta && typeof fbq !== 'undefined') {
-    fbq('track', 'Lead');
+    fbq('track', 'Lead', {}, { eventID: eventId });
+    // 並走でサーバー側 CAPI 送信 (ベストエフォート・失敗しても黙殺)
+    try {
+      fetch('/api/cv-capi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pixel_id: pixels.meta,
+          event_id: eventId,
+          event_name: 'Lead',
+          event_time: Math.floor(Date.now() / 1000),
+          fbp: _slpGetFbp(),
+          fbc: _slpGetFbc(),
+          event_source_url: window.location.href,
+          external_id: externalId
+        }),
+        keepalive: true
+      }).catch(() => {});
+    } catch (e) { /* silent */ }
   }
   // TikTok: SubmitForm イベント
   if (pixels.tiktok && typeof ttq !== 'undefined') {
@@ -201,8 +237,9 @@ function fireConversion(pixels) {
   }
   // GTM: dataLayer に conversion イベントを push (GTM側でトリガー設定可能)
   if (pixels.gtm && window.dataLayer) {
-    window.dataLayer.push({ event: 'cta_conversion', conversion_type: 'cta_click' });
+    window.dataLayer.push({ event: 'cta_conversion', conversion_type: 'cta_click', event_id: eventId });
   }
+  return eventId;
 }
 </script>
 <script>
@@ -228,7 +265,107 @@ function fireConversion(pixels) {
   // 方向設定
   const direction = lp.config.direction || 'horizontal';
   const isVertical = direction === 'vertical';
+  const isScroll = direction === 'scroll';
+  document.documentElement.classList.add(`dir-${direction}`);
   document.body.classList.add(`dir-${direction}`);
+
+  // ===== scroll モード用の擬似エンジン (SwipeEngine と同じ on/getCurrentIndex/prev/next を提供) =====
+  function createScrollEngine(containerEl, steps) {
+    containerEl.classList.add('scroll-mode');
+    let currentIndex = 0;
+    const listeners = {};
+    function emit(ev, data) { (listeners[ev] || []).forEach(fn => fn(data)); }
+
+    steps.forEach((step, i) => {
+      const section = document.createElement('section');
+      section.className = 'scroll-section';
+      section.dataset.index = i;
+
+      const bg = document.createElement('div');
+      bg.className = 'step-bg';
+      if (step.image) {
+        const img = document.createElement('img');
+        img.className = 'step-image';
+        img.src = step.image;
+        img.alt = step.title || `Section ${i + 1}`;
+        img.loading = i <= 1 ? 'eager' : 'lazy';
+        img.draggable = false;
+        bg.appendChild(img);
+      } else if (step.bgGradient) {
+        bg.style.background = step.bgGradient;
+      }
+      section.appendChild(bg);
+
+      const badge = document.createElement('div');
+      badge.className = 'step-badge';
+      badge.style.color = step.textColor || '#fff';
+      badge.textContent = `${i + 1} / ${steps.length}`;
+      section.appendChild(badge);
+
+      const content = document.createElement('div');
+      content.className = 'step-content';
+      content.style.color = step.textColor || '#fff';
+      if (step.title) {
+        const h2 = document.createElement('h2');
+        h2.textContent = step.title;
+        content.appendChild(h2);
+      }
+      if (step.description) {
+        const p = document.createElement('p');
+        p.textContent = step.description;
+        content.appendChild(p);
+      }
+      section.appendChild(content);
+
+      // 中間CTA: step.show_cta_after === true なら、このセクション末尾にCTA追加
+      // ただし最終セクションは大型CTAが既に出るのでスキップ (重複防止)
+      const isFinalSection = (i === steps.length - 1);
+      if (step.show_cta_after && !isFinalSection) {
+        const inlineCta = document.createElement('button');
+        inlineCta.type = 'button';
+        inlineCta.className = 'scroll-section-cta';
+        inlineCta.dataset.scrollCta = '1';
+        inlineCta.textContent = lp.cta_text || 'お問い合わせ';
+        section.appendChild(inlineCta);
+      }
+
+      containerEl.appendChild(section);
+    });
+
+    // IntersectionObserver で「現在表示中のセクション」を判定 → stepChange 発火
+    const observer = new IntersectionObserver((entries) => {
+      let bestEntry = null;
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+          if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
+            bestEntry = entry;
+          }
+        }
+      });
+      if (bestEntry) {
+        const idx = parseInt(bestEntry.target.dataset.index, 10);
+        if (idx !== currentIndex) {
+          const from = currentIndex;
+          currentIndex = idx;
+          emit('stepChange', { from, to: idx });
+        }
+      }
+    }, { threshold: [0.5] });
+    containerEl.querySelectorAll('.scroll-section').forEach(s => observer.observe(s));
+
+    return {
+      on(event, fn) { (listeners[event] = listeners[event] || []).push(fn); },
+      getCurrentIndex() { return currentIndex; },
+      prev() {
+        const t = containerEl.querySelector(`.scroll-section[data-index="${Math.max(0, currentIndex - 1)}"]`);
+        if (t) t.scrollIntoView({ behavior: 'smooth' });
+      },
+      next() {
+        const t = containerEl.querySelector(`.scroll-section[data-index="${Math.min(steps.length - 1, currentIndex + 1)}"]`);
+        if (t) t.scrollIntoView({ behavior: 'smooth' });
+      },
+    };
+  }
 
   // ===== CTA カラープリセット =====
   const CTA_COLOR_PRESETS = {
@@ -295,10 +432,11 @@ function fireConversion(pixels) {
     ctaFinalMicrocopy.style.display = '';
   }
 
-  // スワイプエンジン初期化
+  // スワイプエンジン初期化 (scroll モードは独自エンジン)
   const container = document.getElementById('swipeContainer');
-  const engine = new SwipeEngine(container, { direction });
-  engine.init(lp.config.steps);
+  const engine = isScroll
+    ? createScrollEngine(container, lp.config.steps)
+    : (() => { const e = new SwipeEngine(container, { direction }); e.init(lp.config.steps); return e; })();
 
   // インジケーター生成
   const indicators = document.getElementById('indicators');
@@ -317,13 +455,6 @@ function fireConversion(pixels) {
     navNext.classList.add('vertical');
     navPrev.innerHTML = '&#8593;'; // ↑
     navNext.innerHTML = '&#8595;'; // ↓
-  }
-
-  // スワイプヒントの方向適用
-  const hint = document.getElementById('swipeHint');
-  if (isVertical) {
-    hint.classList.add('vertical');
-    hint.innerHTML = '<span class="arrow">&#8593;</span> スワイプして続きを見る';
   }
 
   // プログレスバー更新
@@ -347,19 +478,7 @@ function fireConversion(pixels) {
   const tracker = new SwipeLPTracker(lp.id);
   await tracker.startSession();
 
-  // ===== 改善1: スワイプ誘導ジェスチャー =====
-  const gestureHint = document.getElementById('gestureHint');
-  if (isVertical) gestureHint.classList.add('vertical');
-  // 2秒後に表示、スワイプしたら消える
-  let gestureShown = false;
-  setTimeout(() => { gestureShown = true; }, 500);
-  function hideGesture() {
-    if (gestureHint && !gestureHint.classList.contains('hidden')) {
-      gestureHint.classList.add('hidden');
-    }
-  }
-
-  // ===== 改善2: 残りステップカウントダウン =====
+  // ===== 残りステップカウントダウン =====
   const remainEl = document.getElementById('stepRemaining');
   function updateRemaining(index) {
     const left = lp.config.steps.length - 1 - index;
@@ -384,11 +503,6 @@ function fireConversion(pixels) {
     updateUI(data.to);
     updateRemaining(data.to);
     tracker.onStepChange(data.from, data.to);
-
-    // ヒント・ジェスチャー非表示
-    const hint = document.getElementById('swipeHint');
-    if (hint) hint.style.display = 'none';
-    hideGesture();
 
     const isFinal = data.to === lp.config.steps.length - 1;
     // embed_form モード: 最終ステップでフォーム自動表示 (sticky CTAは隠す)
@@ -590,7 +704,7 @@ function fireConversion(pixels) {
     submissionForm.style.display = '';
     if (isMultistep) showStep(0);
     tracker.trackCtaClick(engine.getCurrentIndex());  // 内部DBに記録
-    fireConversion(lp.config.pixels || {});          // ピクセルCV発火 (クリック時)
+    fireConversion(lp.config.pixels || {}, { externalId: tracker.sessionId }); // ピクセルCV発火+CAPI並走
   }
   function closeFormModal() {
     formModal.classList.remove('visible');
@@ -665,13 +779,17 @@ function fireConversion(pixels) {
     }
     // url モード (デフォルト)
     tracker.trackCtaClick(engine.getCurrentIndex());
-    fireConversion(lp.config.pixels || {});
+    fireConversion(lp.config.pixels || {}, { externalId: tracker.sessionId });
     if (lp.cta_url && lp.cta_url !== '#') {
       setTimeout(() => { window.open(lp.cta_url, '_blank'); }, 100);
     }
   }
   ctaBtn.addEventListener('click', handleCtaClick);
   ctaFinalBtn.addEventListener('click', handleCtaClick);
+  // scroll モードの中間セクションCTAボタンにもバインド
+  document.querySelectorAll('[data-scroll-cta="1"]').forEach(btn => {
+    btn.addEventListener('click', handleCtaClick);
+  });
 
 
   // ナビ矢印

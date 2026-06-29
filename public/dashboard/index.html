@@ -47,6 +47,7 @@
     <button class="btn btn-ghost" onclick="refreshData()">更新</button>
     <a id="lpLink" href="#" target="_blank" class="btn btn-primary">LPを見る</a>
     <button class="btn btn-ghost" id="notifyBtn" onclick="openNotifySettings()" title="反応低下アラート設定">🔔 監視</button>
+    <button class="btn btn-ghost" onclick="openCapiTokens()" title="Meta Conversions API トークン管理">⚡ CAPI</button>
     <button class="btn btn-ghost" onclick="openEditLP()">編集</button>
     <button class="btn btn-primary" style="background:#22c55e;" onclick="openCreateLP()">+ LP作成</button>
   </div>
@@ -271,11 +272,13 @@
           </div>
         </div>
         <div class="form-row">
-          <label>スワイプ方向</label>
-          <div style="display:flex;gap:8px;">
+          <label>表示タイプ</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="dir-btn active" data-dir="vertical" onclick="setDirection('vertical')">縦スワイプ</button>
             <button class="dir-btn" data-dir="horizontal" onclick="setDirection('horizontal')">横スワイプ</button>
+            <button class="dir-btn" data-dir="scroll" onclick="setDirection('scroll')">スクロール型</button>
           </div>
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:6px;">スクロール型は一般的な縦長LP (各ステップが縦並びセクション化)。Meta広告との相性◎</small>
         </div>
       </div>
 
@@ -473,11 +476,13 @@
           <small style="display:block;color:#f59e0b;font-size:11px;margin-top:6px;">⚠ 変更すると、既存の広告URL（旧スラッグ）は404になります。配信中のキャンペーンがある場合は要注意。</small>
         </div>
         <div class="form-row">
-          <label>スワイプ方向</label>
-          <div style="display:flex;gap:8px;">
+          <label>表示タイプ</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="dir-btn" data-dir="vertical" onclick="setEditDirection('vertical')">縦スワイプ</button>
             <button class="dir-btn" data-dir="horizontal" onclick="setEditDirection('horizontal')">横スワイプ</button>
+            <button class="dir-btn" data-dir="scroll" onclick="setEditDirection('scroll')">スクロール型</button>
           </div>
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:6px;">スクロール型は一般的な縦長LP (各ステップが縦並びセクション化)。Meta広告との相性◎</small>
         </div>
       </div>
 
@@ -689,6 +694,49 @@
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;" onclick="submitNotifySettings()">
         保存する
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Meta CAPI トークン管理モーダル -->
+<div class="modal" id="capiTokensModal" style="display:none;">
+  <div class="modal-content" style="max-width:760px;">
+    <div class="modal-header">
+      <h2>⚡ Meta Conversions API トークン管理</h2>
+      <button class="modal-close" onclick="closeCapiTokens()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.3);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:12.5px;line-height:1.7;color:var(--text);">
+        📌 <strong>ピクセル毎</strong>にアクセストークンを登録。LPの Meta Pixel ID と一致するトークンが自動で使われ、ブラウザのfbqと並走でメタにCV送信されます。<br>
+        ・登録後、<strong>「テスト送信」</strong>でメタイベントマネージャに届くか確認できます<br>
+        ・複数の広告アカウントを使っている場合、それぞれのピクセル分だけ登録してください
+      </div>
+
+      <div style="margin-bottom:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;">
+        <h3 style="font-size:14px;margin:0 0 12px 0;">新規 / 更新登録</h3>
+        <div class="form-row">
+          <label>Meta Pixel ID</label>
+          <input type="text" id="capiPixelId" placeholder="例: 1236325521882054" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label>Access Token (System User Token推奨・無期限)</label>
+          <input type="text" id="capiAccessToken" placeholder="EAAxxxxxxx..." autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label>Test Event Code <span style="color:var(--text-muted);font-size:11px;">(任意・テスト時のみ。本番は空欄)</span></label>
+          <input type="text" id="capiTestEventCode" placeholder="TESTxxxxx (空でOK)" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label>メモ <span style="color:var(--text-muted);font-size:11px;">(管理用、例: 夜職採用アカウント)</span></label>
+          <input type="text" id="capiNote" placeholder="例: 夜職採用ピクセル">
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="saveCapiToken()">保存 / 更新</button>
+      </div>
+
+      <h3 style="font-size:14px;margin:0 0 10px 0;">登録済みトークン一覧</h3>
+      <div id="capiTokensList" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--text-muted);text-align:center;padding:20px;">読み込み中...</div>
+      </div>
     </div>
   </div>
 </div>

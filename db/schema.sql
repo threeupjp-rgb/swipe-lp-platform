@@ -72,6 +72,16 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (lp_id) REFERENCES lps(id)
 );
 
+-- Meta Conversions API トークン (ピクセル単位で管理)
+CREATE TABLE IF NOT EXISTS meta_capi_tokens (
+    pixel_id TEXT PRIMARY KEY,
+    access_token TEXT NOT NULL,
+    test_event_code TEXT,
+    note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- パフォーマンス用インデックス
 CREATE INDEX IF NOT EXISTS idx_events_lp_id ON events(lp_id);
 CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id);

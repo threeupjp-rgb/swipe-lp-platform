@@ -669,45 +669,6 @@ body.dir-vertical { touch-action: pan-x; }
   transform: scale(0.97);
 }
 
-/* スワイプヒント（初回表示） */
-.swipe-hint {
-  position: fixed;
-  bottom: 150px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: rgba(255,255,255,0.7);
-  font-size: 13px;
-  animation: hintFade 3s ease-in-out forwards;
-}
-
-.swipe-hint .arrow {
-  display: inline-block;
-  animation: hintSlide 1.5s ease-in-out infinite;
-}
-
-@keyframes hintSlide {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(-8px); }
-}
-
-@keyframes hintSlideV {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-.swipe-hint.vertical .arrow {
-  animation: hintSlideV 1.5s ease-in-out infinite;
-}
-
-@keyframes hintFade {
-  0%, 70% { opacity: 1; }
-  100% { opacity: 0; pointer-events: none; }
-}
-
 /* スワイプ矢印ナビ */
 .swipe-nav {
   position: fixed;
@@ -789,105 +750,7 @@ body.dir-vertical { touch-action: pan-x; }
   to { transform: rotate(360deg); }
 }
 
-/* ===== 改善1: スワイプ誘導ジェスチャー ===== */
-.swipe-gesture-hint {
-  position: fixed;
-  bottom: 45%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
-  animation: gestureAppear 0.5s ease forwards;
-}
-
-.swipe-gesture-hint.hidden {
-  animation: gestureFade 0.4s ease forwards;
-}
-
-.gesture-hand {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  filter: drop-shadow(0 2px 12px rgba(0,0,0,0.3));
-  animation: gestureSwipe 2s ease-in-out infinite;
-}
-
-.gesture-circle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: rgba(255,255,255,0.9);
-  box-shadow: 0 0 0 4px rgba(255,255,255,0.3), 0 0 0 8px rgba(255,255,255,0.1);
-}
-
-.gesture-arrow {
-  position: absolute;
-  top: 50%;
-  right: 2px;
-  width: 12px;
-  height: 12px;
-  transform: translateY(-50%) rotate(-45deg);
-  border-right: 2.5px solid rgba(255,255,255,0.8);
-  border-bottom: 2.5px solid rgba(255,255,255,0.8);
-}
-
-/* 縦モード: 矢印を下向きに */
-.swipe-gesture-hint.vertical .gesture-arrow {
-  top: auto;
-  bottom: 2px;
-  right: 50%;
-  transform: translateX(50%) rotate(45deg);
-}
-
-.swipe-gesture-hint.vertical .gesture-hand {
-  animation: gestureSwipeV 2s ease-in-out infinite;
-}
-
-.gesture-text {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 6px 14px;
-  border-radius: 20px;
-  white-space: nowrap;
-}
-
-@keyframes gestureSwipe {
-  0%, 100% { transform: translateX(20px); opacity: 0.3; }
-  30% { opacity: 1; }
-  60% { transform: translateX(-20px); opacity: 1; }
-  85% { opacity: 0.3; }
-}
-
-@keyframes gestureSwipeV {
-  0%, 100% { transform: translateY(20px); opacity: 0.3; }
-  30% { opacity: 1; }
-  60% { transform: translateY(-20px); opacity: 1; }
-  85% { opacity: 0.3; }
-}
-
-@keyframes gestureAppear {
-  from { opacity: 0; transform: translateX(-50%) scale(0.8); }
-  to { opacity: 1; transform: translateX(-50%) scale(1); }
-}
-
-@keyframes gestureFade {
-  from { opacity: 1; }
-  to { opacity: 0; pointer-events: none; }
-}
-
-/* ===== 改善2: 残りステップカウントダウン ===== */
+/* ===== 残りステップカウントダウン ===== */
 .step-remaining {
   position: fixed;
   top: 14px;
@@ -913,4 +776,132 @@ body.dir-vertical { touch-action: pan-x; }
   50% { transform: scale(1.15); background: rgba(6,199,85,0.7); }
   100% { transform: scale(1); }
 }
+
+/* ===== Scroll モード (direction='scroll') ===== */
+html.dir-scroll,
+body.dir-scroll {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+body.dir-scroll {
+  /* スティッキーCTAの分の余白を確保 */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+body.dir-scroll .swipe-container.scroll-mode {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: auto;
+}
+
+body.dir-scroll .scroll-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body.dir-scroll .scroll-section .step-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+body.dir-scroll .scroll-section img.step-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}
+
+body.dir-scroll .scroll-section .step-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 5;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+body.dir-scroll .scroll-section .step-content {
+  position: relative;
+  z-index: 4;
+  max-width: 92%;
+  padding: 32px 24px;
+  text-align: center;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+
+body.dir-scroll .scroll-section .step-content h2 {
+  font-size: clamp(22px, 6vw, 32px);
+  font-weight: 800;
+  line-height: 1.4;
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+}
+
+body.dir-scroll .scroll-section .step-content p {
+  font-size: clamp(14px, 3.8vw, 17px);
+  line-height: 1.75;
+  font-weight: 500;
+  opacity: 0.96;
+}
+
+/* scroll モードでは不要なUIを非表示 */
+body.dir-scroll .swipe-nav,
+body.dir-scroll .swipe-indicators,
+body.dir-scroll .step-remaining {
+  display: none !important;
+}
+
+/* scroll モードのセクション末尾 inline CTA */
+body.dir-scroll .scroll-section-cta {
+  position: relative;
+  z-index: 5;
+  margin-top: 18px;
+  padding: 14px 38px;
+  background: var(--cta-primary, #06C755);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--cta-glow, rgba(6,199,85,0.5)), 0 8px 24px rgba(0,0,0,0.25);
+  letter-spacing: 0.04em;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+body.dir-scroll .scroll-section-cta:hover,
+body.dir-scroll .scroll-section-cta:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--cta-glow-strong, rgba(6,199,85,0.75)), 0 10px 28px rgba(0,0,0,0.3);
+}
+body.dir-scroll .scroll-section-cta:active {
+  transform: translateY(0);
+}
+
+/* scroll モードのスティッキーCTAは body 底に追従 (既存の position:fixed のままでOK) */
 

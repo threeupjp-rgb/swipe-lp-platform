@@ -738,6 +738,12 @@ function renderStepsEditor() {
             <input type="text" value="${escapeHtml(step.bgGradient)}" onchange="createSteps[${i}].bgGradient=this.value" placeholder="linear-gradient(135deg, #667eea, #764ba2)">
           </div>
         </div>
+        <div class="form-row" style="margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:var(--text);">
+            <input type="checkbox" ${step.show_cta_after ? 'checked' : ''} onchange="createSteps[${i}].show_cta_after=this.checked" style="width:16px;height:16px;">
+            <span>このセクション末尾にCTAボタンを表示する <small style="color:var(--text-muted);">(スクロール型のみ有効)</small></span>
+          </label>
+        </div>
       </div>
     `;
     container.appendChild(div);
@@ -1013,6 +1019,12 @@ function renderEditStepsEditor() {
             <label>背景色 (画像なしの場合)</label>
             <input type="text" value="${escapeHtml(step.bgGradient)}" onchange="editSteps[${i}].bgGradient=this.value" placeholder="linear-gradient(135deg, #667eea, #764ba2)">
           </div>
+        </div>
+        <div class="form-row" style="margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:var(--text);">
+            <input type="checkbox" ${step.show_cta_after ? 'checked' : ''} onchange="editSteps[${i}].show_cta_after=this.checked" style="width:16px;height:16px;">
+            <span>このセクション末尾にCTAボタンを表示する <small style="color:var(--text-muted);">(スクロール型のみ有効)</small></span>
+          </label>
         </div>
       </div>
     `;
@@ -1315,3 +1327,95 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentTab === 'attribution') loadAttribution();
   });
 });
+
+// ===== Meta CAPI トークン管理 =====
+function openCapiTokens() {
+  document.getElementById('capiTokensModal').style.display = 'flex';
+  loadCapiTokens();
+}
+function closeCapiTokens() {
+  document.getElementById('capiTokensModal').style.display = 'none';
+}
+async function loadCapiTokens() {
+  const listEl = document.getElementById('capiTokensList');
+  listEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">読み込み中...</div>';
+  try {
+    const res = await fetch('/api/capi-tokens');
+    if (!res.ok) throw new Error('読み込み失敗');
+    const rows = await res.json();
+    if (rows.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">まだトークンが登録されていません</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(r => `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:13px;">${escapeHtml(r.note || '(メモなし)')}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Pixel: <code>${escapeHtml(r.pixel_id)}</code></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Token: <code>${escapeHtml(r.access_token_masked)}</code>${r.test_event_code ? ` ・ Test: <code>${escapeHtml(r.test_event_code)}</code>` : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="testCapiToken('${escapeHtml(r.pixel_id)}')">テスト送信</button>
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;color:var(--danger);" onclick="deleteCapiToken('${escapeHtml(r.pixel_id)}')">削除</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = `<div style="color:var(--danger);text-align:center;padding:20px;">読み込みエラー: ${escapeHtml(e.message)}</div>`;
+  }
+}
+async function saveCapiToken() {
+  const pixel_id = document.getElementById('capiPixelId').value.trim();
+  const access_token = document.getElementById('capiAccessToken').value.trim();
+  const test_event_code = document.getElementById('capiTestEventCode').value.trim();
+  const note = document.getElementById('capiNote').value.trim();
+  if (!pixel_id || !access_token) {
+    alert('Pixel ID と Access Token は必須です');
+    return;
+  }
+  try {
+    const res = await fetch('/api/capi-tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pixel_id, access_token, test_event_code: test_event_code || null, note: note || null })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert('保存失敗: ' + (data.error || res.status));
+      return;
+    }
+    document.getElementById('capiAccessToken').value = '';
+    document.getElementById('capiTestEventCode').value = '';
+    document.getElementById('capiNote').value = '';
+    document.getElementById('capiPixelId').value = '';
+    loadCapiTokens();
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+  }
+}
+async function deleteCapiToken(pixelId) {
+  if (!confirm(`Pixel ${pixelId} のトークンを削除しますか？`)) return;
+  try {
+    const res = await fetch(`/api/capi-tokens/${encodeURIComponent(pixelId)}`, { method: 'DELETE' });
+    if (!res.ok) {
+      alert('削除失敗');
+      return;
+    }
+    loadCapiTokens();
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+  }
+}
+async function testCapiToken(pixelId) {
+  try {
+    const res = await fetch(`/api/capi-tokens/${encodeURIComponent(pixelId)}/test`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert('❌ テスト失敗:\n' + JSON.stringify(data, null, 2));
+      return;
+    }
+    alert(`✅ テスト送信成功\n\nevent_id: ${data.event_id}\nevents_received: ${data.events_received}\nfbtrace_id: ${data.fbtrace_id || '-'}\n\n※ メタイベントマネージャで反映確認してください (数秒〜数分で表示)`);
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+  }
+}

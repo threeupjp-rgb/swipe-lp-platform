@@ -289,6 +289,73 @@ router.delete('/submissions/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ===== Meta CAPI トークン管理 (pixel_id ごと) =====
+router.get('/capi-tokens', (req, res) => {
+  const rows = req.db.prepare(`
+    SELECT pixel_id,
+           SUBSTR(access_token, 1, 8) || '...' || SUBSTR(access_token, -4) AS access_token_masked,
+           test_event_code, note, created_at, updated_at
+    FROM meta_capi_tokens
+    ORDER BY updated_at DESC
+  `).all();
+  res.json(rows);
+});
+
+router.post('/capi-tokens', (req, res) => {
+  const { pixel_id, access_token, test_event_code, note } = req.body || {};
+  if (!pixel_id || !access_token) {
+    return res.status(400).json({ error: 'pixel_id, access_token は必須' });
+  }
+  const cleanPixel = String(pixel_id).trim();
+  const cleanToken = String(access_token).trim();
+  req.db.prepare(`
+    INSERT INTO meta_capi_tokens (pixel_id, access_token, test_event_code, note, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(pixel_id) DO UPDATE SET
+      access_token = excluded.access_token,
+      test_event_code = excluded.test_event_code,
+      note = excluded.note,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(cleanPixel, cleanToken, test_event_code || null, note || null);
+  res.json({ ok: true, pixel_id: cleanPixel });
+});
+
+router.delete('/capi-tokens/:pixelId', (req, res) => {
+  const r = req.db.prepare('DELETE FROM meta_capi_tokens WHERE pixel_id = ?').run(req.params.pixelId);
+  res.json({ ok: true, deleted: r.changes });
+});
+
+// 接続テスト: 登録済みトークンで Meta CAPI に test event を1発投げる
+router.post('/capi-tokens/:pixelId/test', async (req, res) => {
+  const row = req.db.prepare('SELECT access_token, test_event_code FROM meta_capi_tokens WHERE pixel_id = ?').get(req.params.pixelId);
+  if (!row) return res.status(404).json({ error: 'pixel_id 未登録' });
+  const CAPI_VERSION = process.env.META_CAPI_VERSION || 'v20.0';
+  const eventId = `test_${Date.now()}`;
+  const payload = {
+    data: [{
+      event_name: 'Lead',
+      event_time: Math.floor(Date.now() / 1000),
+      event_id: eventId,
+      action_source: 'website',
+      event_source_url: 'https://swipe.advertisement-lp.com/test',
+      user_data: { client_ip_address: '127.0.0.1', client_user_agent: 'SwipeLP-CAPI-Test/1.0' }
+    }],
+    ...(row.test_event_code ? { test_event_code: row.test_event_code } : {})
+  };
+  try {
+    const r = await fetch(`https://graph.facebook.com/${CAPI_VERSION}/${req.params.pixelId}/events?access_token=${encodeURIComponent(row.access_token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) return res.status(502).json({ ok: false, status: r.status, detail: json });
+    res.json({ ok: true, event_id: eventId, ...json });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Cron Job 用: 全監視対象LPを判定して通知発射
 // Render Cron Job から basic認証で叩く想定 (basicAuth は server.js でマウント時に適用済み)
 router.post('/admin/check-alerts', async (req, res) => {
