@@ -790,8 +790,8 @@ body.dir-scroll {
   -webkit-user-select: auto;
 }
 body.dir-scroll {
-  /* スティッキーCTAの分の余白を確保 */
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  /* 黒い余白を出さないため透明に (最終セクションの背景がCTA下まで届く) */
+  background: transparent;
 }
 
 body.dir-scroll .swipe-container.scroll-mode {
@@ -813,6 +813,14 @@ body.dir-scroll .scroll-section {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+/* 最終セクションだけスティッキーCTA分高さを足し、その分だけ下部パディングを確保 */
+/* これで CTA 下に「黒い余白」が出ず、最終セクションの背景が CTA まで届く */
+body.dir-scroll .scroll-section:last-child {
+  min-height: calc(100vh + 88px + env(safe-area-inset-bottom));
+  min-height: calc(100svh + 88px + env(safe-area-inset-bottom));
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 body.dir-scroll .scroll-section .step-bg {
