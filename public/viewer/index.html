@@ -269,6 +269,13 @@ function fireConversion(pixels, opts = {}) {
   document.documentElement.classList.add(`dir-${direction}`);
   document.body.classList.add(`dir-${direction}`);
 
+  // scroll モード: 色指定があるときだけ CTA下に色付きスペース(88px)を出す
+  // 未指定なら padding 0 で詰める (デフォルト = スペース無し)
+  if (isScroll && lp.scroll_bg_color) {
+    document.documentElement.style.backgroundColor = lp.scroll_bg_color;
+    document.body.style.paddingBottom = 'calc(88px + env(safe-area-inset-bottom))';
+  }
+
   // ===== scroll モード用の擬似エンジン (SwipeEngine と同じ on/getCurrentIndex/prev/next を提供) =====
   function createScrollEngine(containerEl, steps) {
     containerEl.classList.add('scroll-mode');

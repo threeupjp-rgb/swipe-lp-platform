@@ -790,13 +790,14 @@ body.dir-scroll {
   -webkit-user-select: auto;
 }
 html.dir-scroll {
-  /* CTA下の余白の色 (最終セクション画像と馴染ませるための温かいアイボリー) */
-  background: #f5ece1;
+  /* CTA下の余白色。デフォルトは黒だが、padding-bottom: 0 のため通常は見えない。
+     LP毎に lp.scroll_bg_color が指定された場合のみ JS で背景色+padding を動的設定 */
+  background: #000;
 }
 body.dir-scroll {
   background: transparent;
-  /* スティッキーCTAの分の余白を確保 (本体ページの直下に固定CTA高さぶんの余白を取る) */
-  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  /* デフォルトは padding 0 でCTA下スペースを詰める。色を使う場合は JS で 88px に上書き */
+  padding-bottom: 0;
 }
 
 body.dir-scroll .swipe-container.scroll-mode {

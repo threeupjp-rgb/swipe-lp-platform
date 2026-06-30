@@ -79,6 +79,7 @@ const lpFormCols = [
   ['form_success_cta_text', 'TEXT'],              // 完了画面の追加CTAボタン文言 (例:「LINEで詳細を確認する」)
   ['form_success_cta_url', 'TEXT'],               // 完了画面の追加CTA URL
   ['form_multistep', 'INTEGER DEFAULT 0'],        // マルチステップ表示 (1画面1質問のTypeform風)
+  ['scroll_bg_color', 'TEXT'],                    // direction=scroll 時の html背景色 (CTA下余白の色)
 ];
 for (const [col, def] of lpFormCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}

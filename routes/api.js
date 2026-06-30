@@ -29,7 +29,8 @@ router.post('/lps', (req, res) => {
     form_show_email, form_show_message, form_submit_label,
     form_success_message, form_notify_email,
     form_show_area, form_area_label, form_area_placeholder,
-    form_top_microcopy, form_success_cta_text, form_success_cta_url, form_multistep } = req.body;
+    form_top_microcopy, form_success_cta_text, form_success_cta_url, form_multistep,
+    scroll_bg_color } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
@@ -48,8 +49,9 @@ router.post('/lps', (req, res) => {
       form_show_email, form_show_message, form_submit_label,
       form_success_message, form_notify_email,
       form_show_area, form_area_label, form_area_placeholder,
-      form_top_microcopy, form_success_cta_text, form_success_cta_url, form_multistep)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      form_top_microcopy, form_success_cta_text, form_success_cta_url, form_multistep,
+      scroll_bg_color)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, name, slug, JSON.stringify(config),
     cta_text || 'お問い合わせ', cta_url || '#',
@@ -72,7 +74,8 @@ router.post('/lps', (req, res) => {
     form_top_microcopy || null,
     form_success_cta_text || null,
     form_success_cta_url || null,
-    form_multistep ? 1 : 0
+    form_multistep ? 1 : 0,
+    scroll_bg_color || null
   );
 
   res.json({ id, slug, url: `/lp/${slug}` });
@@ -134,6 +137,10 @@ router.put('/lps/:lpId', (req, res) => {
   if (form_success_cta_text !== undefined) { updates.push('form_success_cta_text = ?'); params.push(form_success_cta_text || null); }
   if (form_success_cta_url !== undefined) { updates.push('form_success_cta_url = ?'); params.push(form_success_cta_url || null); }
   if (form_multistep !== undefined) { updates.push('form_multistep = ?'); params.push(form_multistep ? 1 : 0); }
+
+  // スクロール型LP用のCTA下背景色
+  const { scroll_bg_color } = req.body;
+  if (scroll_bg_color !== undefined) { updates.push('scroll_bg_color = ?'); params.push(scroll_bg_color || null); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 

@@ -683,9 +683,11 @@ function closeCreateLP() {
 
 function setDirection(dir) {
   createDirection = dir;
-  document.querySelectorAll('.dir-btn').forEach(b => {
+  document.querySelectorAll('#createLpModal .dir-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.dir === dir);
   });
+  const row = document.getElementById('createScrollBgRow');
+  if (row) row.style.display = dir === 'scroll' ? '' : 'none';
 }
 
 function addStep() {
@@ -859,7 +861,8 @@ async function submitCreateLP() {
         form_top_microcopy: document.getElementById('createFormTopMicrocopy').value.trim() || null,
         form_success_cta_text: document.getElementById('createFormSuccessCtaText').value.trim() || null,
         form_success_cta_url: document.getElementById('createFormSuccessCtaUrl').value.trim() || null,
-        form_multistep: document.getElementById('createFormMultistep').checked
+        form_multistep: document.getElementById('createFormMultistep').checked,
+        scroll_bg_color: (document.getElementById('createScrollBgColorText').value.trim() || document.getElementById('createScrollBgColor').value || '').trim() || null
       })
     });
     const data = await res.json();
@@ -968,6 +971,8 @@ function setEditDirection(dir) {
   document.querySelectorAll('#editLpModal .dir-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.dir === dir);
   });
+  const row = document.getElementById('editScrollBgRow');
+  if (row) row.style.display = dir === 'scroll' ? '' : 'none';
 }
 
 function addEditStep() {
@@ -1140,7 +1145,8 @@ async function submitEditLP() {
         form_top_microcopy: document.getElementById('editFormTopMicrocopy').value.trim() || null,
         form_success_cta_text: document.getElementById('editFormSuccessCtaText').value.trim() || null,
         form_success_cta_url: document.getElementById('editFormSuccessCtaUrl').value.trim() || null,
-        form_multistep: document.getElementById('editFormMultistep').checked
+        form_multistep: document.getElementById('editFormMultistep').checked,
+        scroll_bg_color: (document.getElementById('editScrollBgColorText').value.trim() || document.getElementById('editScrollBgColor').value || '').trim() || null
       })
     });
     const data = await res.json();
