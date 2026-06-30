@@ -789,9 +789,14 @@ body.dir-scroll {
   user-select: auto;
   -webkit-user-select: auto;
 }
+html.dir-scroll {
+  /* CTA下の余白を黒ではなく白で表示 */
+  background: #fff;
+}
 body.dir-scroll {
-  /* 黒い余白を出さないため透明に (最終セクションの背景がCTA下まで届く) */
   background: transparent;
+  /* スティッキーCTAの分の余白を確保 (本体ページの直下に固定CTA高さぶんの余白を取る) */
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 body.dir-scroll .swipe-container.scroll-mode {
@@ -814,14 +819,8 @@ body.dir-scroll .scroll-section {
   justify-content: center;
   overflow: hidden;
 }
-
-/* 最終セクションだけスティッキーCTA分高さを足し、その分だけ下部パディングを確保 */
-/* これで CTA 下に「黒い余白」が出ず、最終セクションの背景が CTA まで届く */
-body.dir-scroll .scroll-section:last-child {
-  min-height: calc(100vh + 88px + env(safe-area-inset-bottom));
-  min-height: calc(100svh + 88px + env(safe-area-inset-bottom));
-  padding-bottom: calc(88px + env(safe-area-inset-bottom));
-}
+/* 全セクション同じ高さ。最終セクションだけ拡張するとobject-fit:coverで画像が拡大されてしまうため
+   CTA下の余白は html背景(白)で表示する方針に変更 */
 
 body.dir-scroll .scroll-section .step-bg {
   position: absolute;
