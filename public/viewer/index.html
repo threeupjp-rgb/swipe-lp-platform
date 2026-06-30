@@ -365,11 +365,11 @@ function fireConversion(pixels, opts = {}) {
       getCurrentIndex() { return currentIndex; },
       prev() {
         const t = containerEl.querySelector(`.scroll-section[data-index="${Math.max(0, currentIndex - 1)}"]`);
-        if (t) t.scrollIntoView({ behavior: 'smooth' });
+        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
       },
       next() {
         const t = containerEl.querySelector(`.scroll-section[data-index="${Math.min(steps.length - 1, currentIndex + 1)}"]`);
-        if (t) t.scrollIntoView({ behavior: 'smooth' });
+        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
       },
     };
   }
@@ -445,14 +445,16 @@ function fireConversion(pixels, opts = {}) {
     ? createScrollEngine(container, lp.config.steps)
     : (() => { const e = new SwipeEngine(container, { direction }); e.init(lp.config.steps); return e; })();
 
-  // インジケーター生成
+  // インジケーター生成 (scroll モードではドット自体作らない)
   const indicators = document.getElementById('indicators');
   if (isVertical) indicators.classList.add('vertical');
-  lp.config.steps.forEach((_, i) => {
-    const dot = document.createElement('span');
-    dot.className = 'dot' + (i === 0 ? ' active' : '');
-    indicators.appendChild(dot);
-  });
+  if (!isScroll) {
+    lp.config.steps.forEach((_, i) => {
+      const dot = document.createElement('span');
+      dot.className = 'dot' + (i === 0 ? ' active' : '');
+      indicators.appendChild(dot);
+    });
+  }
 
   // ナビ矢印の方向適用
   const navPrev = document.getElementById('navPrev');
@@ -463,9 +465,20 @@ function fireConversion(pixels, opts = {}) {
     navPrev.innerHTML = '&#8593;'; // ↑
     navNext.innerHTML = '&#8595;'; // ↓
   }
+  // scroll モード: 不要なUIを inline スタイルで確実に非表示 (CSSのdisplay:noneと二重防御)
+  if (isScroll) {
+    indicators.style.display = 'none';
+    navPrev.style.display = 'none';
+    navNext.style.display = 'none';
+    const remEl = document.getElementById('stepRemaining');
+    if (remEl) remEl.style.display = 'none';
+    const prog = document.querySelector('.swipe-progress');
+    if (prog) prog.style.display = 'none';
+  }
 
-  // プログレスバー更新
+  // プログレスバー更新 (scroll モードでは全UIが不要なので何もしない)
   function updateUI(index) {
+    if (isScroll) return;
     const total = lp.config.steps.length;
     document.getElementById('progressBar').style.width = `${((index + 1) / total) * 100}%`;
 
@@ -485,9 +498,10 @@ function fireConversion(pixels, opts = {}) {
   const tracker = new SwipeLPTracker(lp.id);
   await tracker.startSession();
 
-  // ===== 残りステップカウントダウン =====
+  // ===== 残りステップカウントダウン (scroll モードでは完全に無効化) =====
   const remainEl = document.getElementById('stepRemaining');
   function updateRemaining(index) {
+    if (isScroll) return; // scroll モードでは何もしない (inline style 上書き防止)
     const left = lp.config.steps.length - 1 - index;
     if (left > 0) {
       remainEl.textContent = `あと ${left} 枚`;

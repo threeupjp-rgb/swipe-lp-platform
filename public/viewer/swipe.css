@@ -778,26 +778,29 @@ body.dir-vertical { touch-action: pan-x; }
 }
 
 /* ===== Scroll モード (direction='scroll') ===== */
-html.dir-scroll,
+/* スクロールコンテナを body 1本に統一 (二重化を解消して IntersectionObserver 安定化) */
+html.dir-scroll {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: visible;
+  background: #000;
+  touch-action: pan-y;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
 body.dir-scroll {
   height: auto;
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+  background: transparent;
+  padding-bottom: 0;
+  touch-action: pan-y;
   user-select: auto;
   -webkit-user-select: auto;
-}
-html.dir-scroll {
-  /* CTA下の余白色。デフォルトは黒だが、padding-bottom: 0 のため通常は見えない。
-     LP毎に lp.scroll_bg_color が指定された場合のみ JS で背景色+padding を動的設定 */
-  background: #000;
-}
-body.dir-scroll {
-  background: transparent;
-  /* デフォルトは padding 0 でCTA下スペースを詰める。色を使う場合は JS で 88px に上書き */
-  padding-bottom: 0;
+  line-height: 1.4;
 }
 
 body.dir-scroll .swipe-container.scroll-mode {
@@ -823,6 +826,10 @@ body.dir-scroll .scroll-section {
   /* レンダリング最適化 (各セクションを独立に再描画 → スクロール時のラグ軽減) */
   contain: layout paint;
   isolation: isolate;
+  /* 隙間が出ても目立たない様、セクション背景を黒にフォールバック */
+  background: #000;
+  /* 余計な行高で上下に隙間ができないよう */
+  line-height: 1;
 }
 
 /* GPUアクセラレーション: 背景画像をハードウェア合成レイヤに昇格 → スクロール時のジャダー解消 */
@@ -837,9 +844,10 @@ body.dir-scroll .scroll-section img.step-image {
   transform: translateZ(0);
 }
 
-/* 最終セクション: 内側に CTA高さ分の padding を確保 (コンテンツがCTAに被らない) */
-/* min-heightは拡張しないので、object-fit:coverによる画像拡大は発生しない */
-body.dir-scroll .scroll-section:last-child .step-content {
+/* 最終セクション: padding は section レベルに設置する。
+   step-content (flex子) に padding-bottom を入れると flex の justify-content:center で
+   コンテンツが中央配置時に上方向へ押し上げられ、セクション上部に白帯が発生するため避ける */
+body.dir-scroll .scroll-section:last-child {
   padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
@@ -896,11 +904,15 @@ body.dir-scroll .scroll-section .step-content p {
   opacity: 0.96;
 }
 
-/* scroll モードでは不要なUIを非表示 */
+/* scroll モードでは不要なUIを完全に非表示 (JSのinline styleで打ち消されないよう visibility/pointer-events も併用) */
 body.dir-scroll .swipe-nav,
 body.dir-scroll .swipe-indicators,
-body.dir-scroll .step-remaining {
+body.dir-scroll .step-remaining,
+body.dir-scroll .step-badge,
+body.dir-scroll .swipe-progress {
   display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* scroll モードのセクション末尾 inline CTA */
