@@ -790,8 +790,8 @@ body.dir-scroll {
   -webkit-user-select: auto;
 }
 html.dir-scroll {
-  /* CTA下の余白を黒ではなく白で表示 */
-  background: #fff;
+  /* CTA下の余白の色 (最終セクション画像と馴染ませるための温かいアイボリー) */
+  background: #f5ece1;
 }
 body.dir-scroll {
   background: transparent;
@@ -817,10 +817,30 @@ body.dir-scroll .scroll-section {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  /* overflow: hidden を解除 → コンテンツがセクションをはみ出した場合に切れない */
+  overflow: visible;
+  /* レンダリング最適化 (各セクションを独立に再描画 → スクロール時のラグ軽減) */
+  contain: layout paint;
+  isolation: isolate;
 }
-/* 全セクション同じ高さ。最終セクションだけ拡張するとobject-fit:coverで画像が拡大されてしまうため
-   CTA下の余白は html背景(白)で表示する方針に変更 */
+
+/* GPUアクセラレーション: 背景画像をハードウェア合成レイヤに昇格 → スクロール時のジャダー解消 */
+body.dir-scroll .scroll-section .step-bg {
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+body.dir-scroll .scroll-section img.step-image {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* 最終セクション: 内側に CTA高さ分の padding を確保 (コンテンツがCTAに被らない) */
+/* min-heightは拡張しないので、object-fit:coverによる画像拡大は発生しない */
+body.dir-scroll .scroll-section:last-child .step-content {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
 
 body.dir-scroll .scroll-section .step-bg {
   position: absolute;
