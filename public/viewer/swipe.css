@@ -820,9 +820,14 @@ body.dir-scroll .scroll-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* safe center: コンテンツが100svhを超えた時は中央配置をやめて上寄せに (上端見切れ防止)
+     未対応ブラウザは通常のcenterにフォールバック */
+  justify-content: safe center;
   /* overflow: hidden を解除 → コンテンツがセクションをはみ出した場合に切れない */
   overflow: visible;
+  /* iOS ノッチ/ステータスバー領域を避ける + 上下に最小余白を確保 */
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
   /* レンダリング最適化 (各セクションを独立に再描画 → スクロール時のラグ軽減) */
   contain: layout paint;
   isolation: isolate;
