@@ -815,25 +815,15 @@ body.dir-scroll .swipe-container.scroll-mode {
 body.dir-scroll .scroll-section {
   position: relative;
   width: 100%;
+  /* 画像なしセクション (bgGradientのみ) のフォールバック高さ。
+     画像ありセクションは JS で minHeight: auto に上書きされ、画像のアスペクト比で決まる */
   min-height: 100vh;
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /* safe center: コンテンツが100svhを超えた時は中央配置をやめて上寄せに (上端見切れ防止)
-     未対応ブラウザは通常のcenterにフォールバック */
-  justify-content: safe center;
-  /* overflow: hidden を解除 → コンテンツがセクションをはみ出した場合に切れない */
-  overflow: visible;
-  /* iOS ノッチ/ステータスバー領域を避ける + 上下に最小余白を確保 */
-  padding-top: max(20px, env(safe-area-inset-top));
-  padding-bottom: max(20px, env(safe-area-inset-bottom));
-  /* レンダリング最適化 (各セクションを独立に再描画 → スクロール時のラグ軽減) */
+  display: block;
+  overflow: hidden;
   contain: layout paint;
   isolation: isolate;
-  /* 隙間が出ても目立たない様、セクション背景を黒にフォールバック */
   background: #000;
-  /* 余計な行高で上下に隙間ができないよう */
   line-height: 1;
 }
 
@@ -886,12 +876,21 @@ body.dir-scroll .scroll-section .step-badge {
 }
 
 body.dir-scroll .scroll-section .step-content {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 4;
-  max-width: 92%;
-  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  padding: max(32px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom));
   text-align: center;
   text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+body.dir-scroll .scroll-section .step-content > * {
+  pointer-events: auto;
 }
 
 body.dir-scroll .scroll-section .step-content h2 {

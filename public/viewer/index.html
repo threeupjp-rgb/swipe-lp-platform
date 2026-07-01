@@ -291,14 +291,24 @@ function fireConversion(pixels, opts = {}) {
       const bg = document.createElement('div');
       bg.className = 'step-bg';
       if (step.image) {
+        // 画像あり: 画像のアスペクト比でセクション高さを決める
+        // section min-height を無効化して画像の実サイズで高さが決まるようにする
+        section.style.minHeight = 'auto';
+        bg.style.position = 'relative';
+        bg.style.width = '100%';
         const img = document.createElement('img');
         img.className = 'step-image';
         img.src = step.image;
         img.alt = step.title || `Section ${i + 1}`;
         img.loading = i <= 1 ? 'eager' : 'lazy';
         img.draggable = false;
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.objectFit = 'initial';
+        img.style.display = 'block';
         bg.appendChild(img);
       } else if (step.bgGradient) {
+        // 画像なし: bgGradient を絶対配置で全体に (min-height 100svh のデフォルト継承)
         bg.style.background = step.bgGradient;
       }
       section.appendChild(bg);
