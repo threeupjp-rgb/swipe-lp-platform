@@ -291,11 +291,10 @@ function fireConversion(pixels, opts = {}) {
       const bg = document.createElement('div');
       bg.className = 'step-bg';
       if (step.image) {
-        // 画像あり: 画像のアスペクト比でセクション高さを決める
-        // section min-height を無効化して画像の実サイズで高さが決まるようにする
-        section.style.minHeight = 'auto';
-        bg.style.position = 'relative';
-        bg.style.width = '100%';
+        // 画像あり: セクションは 100svh 固定のまま (CLS防止・ジャンプ回避)
+        // 画像は object-fit: contain でアスペクト比保持しつつ全体を表示 (トリミングなし・余白は黒背景)
+        bg.style.position = 'absolute';
+        bg.style.inset = '0';
         const img = document.createElement('img');
         img.className = 'step-image';
         img.src = step.image;
@@ -303,8 +302,9 @@ function fireConversion(pixels, opts = {}) {
         img.loading = i <= 1 ? 'eager' : 'lazy';
         img.draggable = false;
         img.style.width = '100%';
-        img.style.height = 'auto';
-        img.style.objectFit = 'initial';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        img.style.objectPosition = 'center center';
         img.style.display = 'block';
         bg.appendChild(img);
       } else if (step.bgGradient) {
