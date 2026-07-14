@@ -198,11 +198,18 @@ function fireConversion(pixels, opts = {}) {
   // event_id を統一してブラウザ fbq とサーバー CAPI を重複排除
   const eventId = opts.eventId || _slpGenEventId();
   const externalId = opts.externalId || null;
-  // 発火イベント名 (デフォルト Lead / フォーム送信完了時は CompleteRegistration など)
+  // 発火イベント名 (デフォルト Lead / フォーム送信完了時は SubmitApplication など)
   const eventName = opts.eventName || 'Lead';
   // TikTok/LINE 用のセカンダリ名 (Meta と異なる可能性)
-  const tiktokEventName = eventName === 'CompleteRegistration' ? 'CompleteRegistration' : 'SubmitForm';
-  const lineActionName = eventName === 'CompleteRegistration' ? 'FormSubmit' : 'Conversion';
+  let tiktokEventName = 'SubmitForm';
+  let lineActionName = 'Conversion';
+  if (eventName === 'SubmitApplication') {
+    tiktokEventName = 'SubmitForm';
+    lineActionName = 'Application';
+  } else if (eventName === 'CompleteRegistration') {
+    tiktokEventName = 'CompleteRegistration';
+    lineActionName = 'FormSubmit';
+  }
 
   // Meta: 指定イベント発火 (eventID 指定でCAPIと重複排除)
   if (pixels.meta && typeof fbq !== 'undefined') {
@@ -792,10 +799,10 @@ function fireConversion(pixels, opts = {}) {
         formError.style.display = '';
         return;
       }
-      // フォーム送信完了 → 深いCV「CompleteRegistration」を発火 (CTAクリックのLeadと別イベント)
+      // フォーム送信完了 → 深いCV「SubmitApplication」を発火 (求人応募専用のMeta標準イベント)
       // CTAクリック時のLeadと event_id を分けることで、両方が別カウントとして計測される
       fireConversion(lp.config.pixels || {}, {
-        eventName: 'CompleteRegistration',
+        eventName: 'SubmitApplication',
         externalId: tracker.sessionId
       });
 
