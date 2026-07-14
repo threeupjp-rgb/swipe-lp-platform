@@ -80,6 +80,13 @@ const lpFormCols = [
   ['form_success_cta_url', 'TEXT'],               // 完了画面の追加CTA URL
   ['form_multistep', 'INTEGER DEFAULT 0'],        // マルチステップ表示 (1画面1質問のTypeform風)
   ['scroll_bg_color', 'TEXT'],                    // direction=scroll 時の html背景色 (CTA下余白の色)
+  ['form_name_label', 'TEXT'],                    // 名前欄のラベル (デフォルト「お名前」、例:「お名前 (偽名OK)」)
+  ['form_name_placeholder', 'TEXT'],              // 名前欄のプレースホルダー
+  ['form_phone_required', 'INTEGER DEFAULT 1'],   // 電話必須フラグ (1=必須, 0=任意)
+  ['form_email_required', 'INTEGER DEFAULT 1'],   // メール必須フラグ (1=必須, 0=任意)
+  ['form_line_id_label', 'TEXT'],                 // LINE ID欄のラベル
+  ['form_message_label', 'TEXT'],                 // メッセージ欄のラベル
+  ['form_message_placeholder', 'TEXT'],           // メッセージ欄のプレースホルダー
 ];
 for (const [col, def] of lpFormCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}

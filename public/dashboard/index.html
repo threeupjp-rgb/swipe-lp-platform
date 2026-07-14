@@ -357,22 +357,56 @@
             <input type="checkbox" id="createFormShowName" style="width:18px;height:18px;" checked>
             <span>お名前 (必須項目)</span>
           </label>
+          <div style="margin-left:26px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:6px;">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「お名前」)</label>
+              <input type="text" id="createFormNameLabel" placeholder="例: お名前 (偽名OK)">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">プレースホルダー</label>
+              <input type="text" id="createFormNamePlaceholder" placeholder="例: 例) みさき">
+            </div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="createFormShowPhone" style="width:18px;height:18px;" checked>
-            <span>電話番号 (必須項目)</span>
+            <span>電話番号</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted);margin-left:26px;margin-bottom:8px;">
+            <input type="checkbox" id="createFormPhoneRequired" style="width:14px;height:14px;" checked>
+            <span>この項目を必須にする</span>
           </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="createFormShowLineId" style="width:18px;height:18px;">
             <span>LINE ID</span>
           </label>
+          <div style="margin-left:26px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「LINE ID」)</label>
+              <input type="text" id="createFormLineIdLabel" placeholder="例: LINE ID (お持ちの方)">
+            </div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="createFormShowEmail" style="width:18px;height:18px;">
             <span>メールアドレス</span>
           </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted);margin-left:26px;margin-bottom:8px;">
+            <input type="checkbox" id="createFormEmailRequired" style="width:14px;height:14px;" checked>
+            <span>この項目を必須にする</span>
+          </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="createFormShowMessage" style="width:18px;height:18px;" checked>
-            <span>メッセージ・自由入力</span>
+            <span>メッセージ・自由入力 (任意)</span>
           </label>
+          <div style="margin-left:26px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:6px;">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「メッセージ・ご質問」)</label>
+              <input type="text" id="createFormMessageLabel" placeholder="例: 質問・ご希望など">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">プレースホルダー</label>
+              <input type="text" id="createFormMessagePlaceholder" placeholder="例: 年齢/経験/希望勤務時間帯など">
+            </div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="createFormShowArea" style="width:18px;height:18px;" onchange="toggleCreateAreaConfig()">
             <span>エリア・最寄り駅 (自由記述)</span>
@@ -569,22 +603,56 @@
             <input type="checkbox" id="editFormShowName" style="width:18px;height:18px;" checked>
             <span>お名前 (必須項目)</span>
           </label>
+          <div style="margin-left:26px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:6px;">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「お名前」)</label>
+              <input type="text" id="editFormNameLabel" placeholder="例: お名前 (偽名OK)">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">プレースホルダー</label>
+              <input type="text" id="editFormNamePlaceholder" placeholder="例: 例) みさき">
+            </div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="editFormShowPhone" style="width:18px;height:18px;" checked>
-            <span>電話番号 (必須項目)</span>
+            <span>電話番号</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted);margin-left:26px;margin-bottom:8px;">
+            <input type="checkbox" id="editFormPhoneRequired" style="width:14px;height:14px;" checked>
+            <span>この項目を必須にする</span>
           </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="editFormShowLineId" style="width:18px;height:18px;">
             <span>LINE ID</span>
           </label>
+          <div style="margin-left:26px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「LINE ID」)</label>
+              <input type="text" id="editFormLineIdLabel" placeholder="例: LINE ID (お持ちの方)">
+            </div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="editFormShowEmail" style="width:18px;height:18px;">
             <span>メールアドレス</span>
           </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted);margin-left:26px;margin-bottom:8px;">
+            <input type="checkbox" id="editFormEmailRequired" style="width:14px;height:14px;" checked>
+            <span>この項目を必須にする</span>
+          </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="editFormShowMessage" style="width:18px;height:18px;" checked>
-            <span>メッセージ・自由入力</span>
+            <span>メッセージ・自由入力 (任意)</span>
           </label>
+          <div style="margin-left:26px;margin-bottom:8px;">
+            <div class="form-row" style="margin-bottom:6px;">
+              <label style="font-size:11px;">ラベル文言 (空欄なら「メッセージ・ご質問」)</label>
+              <input type="text" id="editFormMessageLabel" placeholder="例: 質問・ご希望など">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label style="font-size:11px;">プレースホルダー</label>
+              <input type="text" id="editFormMessagePlaceholder" placeholder="例: 年齢/経験/希望勤務時間帯など">
+            </div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">
             <input type="checkbox" id="editFormShowArea" style="width:18px;height:18px;" onchange="toggleEditAreaConfig()">
             <span>エリア・最寄り駅 (自由記述)</span>

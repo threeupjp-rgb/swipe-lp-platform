@@ -30,7 +30,10 @@ router.post('/lps', (req, res) => {
     form_success_message, form_notify_email,
     form_show_area, form_area_label, form_area_placeholder,
     form_top_microcopy, form_success_cta_text, form_success_cta_url, form_multistep,
-    scroll_bg_color } = req.body;
+    scroll_bg_color,
+    form_name_label, form_name_placeholder,
+    form_phone_required, form_email_required,
+    form_line_id_label, form_message_label, form_message_placeholder } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
@@ -50,8 +53,11 @@ router.post('/lps', (req, res) => {
       form_success_message, form_notify_email,
       form_show_area, form_area_label, form_area_placeholder,
       form_top_microcopy, form_success_cta_text, form_success_cta_url, form_multistep,
-      scroll_bg_color)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      scroll_bg_color,
+      form_name_label, form_name_placeholder,
+      form_phone_required, form_email_required,
+      form_line_id_label, form_message_label, form_message_placeholder)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, name, slug, JSON.stringify(config),
     cta_text || 'お問い合わせ', cta_url || '#',
@@ -75,7 +81,14 @@ router.post('/lps', (req, res) => {
     form_success_cta_text || null,
     form_success_cta_url || null,
     form_multistep ? 1 : 0,
-    scroll_bg_color || null
+    scroll_bg_color || null,
+    form_name_label || null,
+    form_name_placeholder || null,
+    form_phone_required === false ? 0 : 1,
+    form_email_required === false ? 0 : 1,
+    form_line_id_label || null,
+    form_message_label || null,
+    form_message_placeholder || null
   );
 
   res.json({ id, slug, url: `/lp/${slug}` });
@@ -139,8 +152,18 @@ router.put('/lps/:lpId', (req, res) => {
   if (form_multistep !== undefined) { updates.push('form_multistep = ?'); params.push(form_multistep ? 1 : 0); }
 
   // スクロール型LP用のCTA下背景色
-  const { scroll_bg_color } = req.body;
+  const { scroll_bg_color,
+    form_name_label, form_name_placeholder,
+    form_phone_required, form_email_required,
+    form_line_id_label, form_message_label, form_message_placeholder } = req.body;
   if (scroll_bg_color !== undefined) { updates.push('scroll_bg_color = ?'); params.push(scroll_bg_color || null); }
+  if (form_name_label !== undefined) { updates.push('form_name_label = ?'); params.push(form_name_label || null); }
+  if (form_name_placeholder !== undefined) { updates.push('form_name_placeholder = ?'); params.push(form_name_placeholder || null); }
+  if (form_phone_required !== undefined) { updates.push('form_phone_required = ?'); params.push(form_phone_required ? 1 : 0); }
+  if (form_email_required !== undefined) { updates.push('form_email_required = ?'); params.push(form_email_required ? 1 : 0); }
+  if (form_line_id_label !== undefined) { updates.push('form_line_id_label = ?'); params.push(form_line_id_label || null); }
+  if (form_message_label !== undefined) { updates.push('form_message_label = ?'); params.push(form_message_label || null); }
+  if (form_message_placeholder !== undefined) { updates.push('form_message_placeholder = ?'); params.push(form_message_placeholder || null); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 

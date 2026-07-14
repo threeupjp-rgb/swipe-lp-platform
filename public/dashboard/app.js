@@ -862,7 +862,14 @@ async function submitCreateLP() {
         form_success_cta_text: document.getElementById('createFormSuccessCtaText').value.trim() || null,
         form_success_cta_url: document.getElementById('createFormSuccessCtaUrl').value.trim() || null,
         form_multistep: document.getElementById('createFormMultistep').checked,
-        scroll_bg_color: (document.getElementById('createScrollBgColorText').value.trim() || document.getElementById('createScrollBgColor').value || '').trim() || null
+        scroll_bg_color: (document.getElementById('createScrollBgColorText').value.trim() || document.getElementById('createScrollBgColor').value || '').trim() || null,
+        form_name_label: document.getElementById('createFormNameLabel').value.trim() || null,
+        form_name_placeholder: document.getElementById('createFormNamePlaceholder').value.trim() || null,
+        form_phone_required: document.getElementById('createFormPhoneRequired').checked,
+        form_email_required: document.getElementById('createFormEmailRequired').checked,
+        form_line_id_label: document.getElementById('createFormLineIdLabel').value.trim() || null,
+        form_message_label: document.getElementById('createFormMessageLabel').value.trim() || null,
+        form_message_placeholder: document.getElementById('createFormMessagePlaceholder').value.trim() || null
       })
     });
     const data = await res.json();
@@ -930,6 +937,15 @@ async function openEditLP() {
   document.getElementById('editFormSuccessCtaText').value = editLpData.form_success_cta_text || '';
   document.getElementById('editFormSuccessCtaUrl').value = editLpData.form_success_cta_url || '';
   document.getElementById('editFormMultistep').checked = editLpData.form_multistep === 1;
+
+  // フォーム項目のラベル・必須設定
+  document.getElementById('editFormNameLabel').value = editLpData.form_name_label || '';
+  document.getElementById('editFormNamePlaceholder').value = editLpData.form_name_placeholder || '';
+  document.getElementById('editFormPhoneRequired').checked = editLpData.form_phone_required !== 0;
+  document.getElementById('editFormEmailRequired').checked = editLpData.form_email_required !== 0;
+  document.getElementById('editFormLineIdLabel').value = editLpData.form_line_id_label || '';
+  document.getElementById('editFormMessageLabel').value = editLpData.form_message_label || '';
+  document.getElementById('editFormMessagePlaceholder').value = editLpData.form_message_placeholder || '';
 
   // ピクセル
   const pixels = config.pixels || {};
@@ -1146,7 +1162,14 @@ async function submitEditLP() {
         form_success_cta_text: document.getElementById('editFormSuccessCtaText').value.trim() || null,
         form_success_cta_url: document.getElementById('editFormSuccessCtaUrl').value.trim() || null,
         form_multistep: document.getElementById('editFormMultistep').checked,
-        scroll_bg_color: (document.getElementById('editScrollBgColorText').value.trim() || document.getElementById('editScrollBgColor').value || '').trim() || null
+        scroll_bg_color: (document.getElementById('editScrollBgColorText').value.trim() || document.getElementById('editScrollBgColor').value || '').trim() || null,
+        form_name_label: document.getElementById('editFormNameLabel').value.trim() || null,
+        form_name_placeholder: document.getElementById('editFormNamePlaceholder').value.trim() || null,
+        form_phone_required: document.getElementById('editFormPhoneRequired').checked,
+        form_email_required: document.getElementById('editFormEmailRequired').checked,
+        form_line_id_label: document.getElementById('editFormLineIdLabel').value.trim() || null,
+        form_message_label: document.getElementById('editFormMessageLabel').value.trim() || null,
+        form_message_placeholder: document.getElementById('editFormMessagePlaceholder').value.trim() || null
       })
     });
     const data = await res.json();

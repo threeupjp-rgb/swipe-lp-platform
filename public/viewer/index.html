@@ -648,9 +648,11 @@ function fireConversion(pixels, opts = {}) {
       area: lp.form_show_area === 1,
       message: lp.form_show_message !== 0,
     };
-    // 必須にするフィールド (表示している場合のみ effective)
-    // name / phone / email は表示中なら必須。 line_id / area / message は任意
-    const requiredFields = new Set(['name', 'phone', 'email']);
+    // 必須設定: name は常に必須。phone/email は LP毎にフラグで切替 (デフォルト必須)
+    // line_id / area / message は常に任意
+    const requiredFields = new Set(['name']);
+    if (lp.form_phone_required !== 0) requiredFields.add('phone');
+    if (lp.form_email_required !== 0) requiredFields.add('email');
 
     Object.entries(map).forEach(([key, show]) => {
       const f = submissionForm.querySelector(`.form-field[data-field="${key}"]`);
@@ -676,6 +678,44 @@ function fireConversion(pixels, opts = {}) {
         f.classList.add('hidden');
       }
     });
+
+    // 名前欄: LP毎にラベル/プレースホルダーをカスタマイズ可能 (例: 「お名前 (偽名OK)」)
+    const nameField = submissionForm.querySelector('.form-field[data-field="name"]');
+    if (nameField) {
+      const nameLabel = nameField.querySelector('label');
+      const nameInput = nameField.querySelector('input');
+      if (nameLabel && lp.form_name_label) {
+        // 必須マーク(.req)は保持しつつ、テキストだけ差替
+        const req = nameLabel.querySelector('.req');
+        nameLabel.textContent = lp.form_name_label;
+        if (req) nameLabel.appendChild(req);
+      }
+      if (nameInput && lp.form_name_placeholder) nameInput.placeholder = lp.form_name_placeholder;
+    }
+
+    // LINE ID欄: LP毎にラベルをカスタマイズ可能
+    const lineField = submissionForm.querySelector('.form-field[data-field="line_id"]');
+    if (lineField) {
+      const lineLabel = lineField.querySelector('label');
+      if (lineLabel && lp.form_line_id_label) {
+        const req = lineLabel.querySelector('.req');
+        lineLabel.textContent = lp.form_line_id_label;
+        if (req) lineLabel.appendChild(req);
+      }
+    }
+
+    // メッセージ欄: LP毎にラベル/プレースホルダーをカスタマイズ可能
+    const msgField = submissionForm.querySelector('.form-field[data-field="message"]');
+    if (msgField) {
+      const msgLabel = msgField.querySelector('label');
+      const msgInput = msgField.querySelector('textarea');
+      if (msgLabel && lp.form_message_label) {
+        const req = msgLabel.querySelector('.req');
+        msgLabel.textContent = lp.form_message_label;
+        if (req) msgLabel.appendChild(req);
+      }
+      if (msgInput && lp.form_message_placeholder) msgInput.placeholder = lp.form_message_placeholder;
+    }
 
     // エリア欄: LP毎にラベル/プレースホルダーをカスタマイズ可能
     if (lp.form_show_area === 1) {
