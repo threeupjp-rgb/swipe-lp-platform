@@ -13,17 +13,30 @@ router.post('/', (req, res) => {
 
   const events = (req.body && req.body.events) || [];
   for (const event of events) {
-    const userId = event.source?.userId || 'unknown';
+    const src = event.source || {};
+    const userId = src.userId || 'unknown';
+    const groupId = src.groupId || null;
+    const roomId = src.roomId || null;
     const type = event.type;
+
     if (type === 'follow') {
       console.log(`[LINE Webhook] 友だち追加: user_id=${userId}`);
     } else if (type === 'unfollow') {
       console.log(`[LINE Webhook] ブロック/削除: user_id=${userId}`);
+    } else if (type === 'join') {
+      // Bot がグループ/ルームに招待されたイベント。group_id/room_id が判明
+      if (groupId) console.log(`[LINE Webhook] グループに参加: group_id=${groupId}`);
+      else if (roomId) console.log(`[LINE Webhook] ルームに参加: room_id=${roomId}`);
+    } else if (type === 'leave') {
+      if (groupId) console.log(`[LINE Webhook] グループから退出: group_id=${groupId}`);
+      else if (roomId) console.log(`[LINE Webhook] ルームから退出: room_id=${roomId}`);
     } else if (type === 'message' && event.message?.type === 'text') {
       const text = event.message.text.slice(0, 100);
-      console.log(`[LINE Webhook] メッセージ: user_id=${userId} text="${text}"`);
+      const loc = groupId ? `group_id=${groupId}` : (roomId ? `room_id=${roomId}` : `user_id=${userId}`);
+      console.log(`[LINE Webhook] メッセージ: ${loc} text="${text}"`);
     } else {
-      console.log(`[LINE Webhook] event type=${type} user_id=${userId}`);
+      const loc = groupId ? `group_id=${groupId}` : (roomId ? `room_id=${roomId}` : `user_id=${userId}`);
+      console.log(`[LINE Webhook] event type=${type} ${loc}`);
     }
   }
 });
