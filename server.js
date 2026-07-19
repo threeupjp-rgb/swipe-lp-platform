@@ -197,6 +197,8 @@ const submitRoutes = require('./routes/submit');
 app.use('/api/submit', submitRoutes);
 const cvCapiRoutes = require('./routes/cv-capi');
 app.use('/api/cv-capi', cvCapiRoutes);
+const lineWebhookRoutes = require('./routes/line-webhook');
+app.use('/api/line-webhook', lineWebhookRoutes);
 app.get('/api/lp-by-slug/:slug', (req, res) => {
   const lp = db.prepare('SELECT * FROM lps WHERE slug = ?').get(req.params.slug);
   if (!lp) return res.status(404).json({ error: 'LP not found' });
