@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { sendEmail } = require('../services/mailer');
+const { sendLinePush, formatSubmissionMessage } = require('../services/line-notify');
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -96,6 +97,14 @@ router.post('/:lpIdOrSlug', async (req, res) => {
     })
       .then(r => { if (!r.ok) console.error(`[submit] email failed: ${r.error}`); })
       .catch(e => console.error('[submit] email exception:', e));
+  }
+
+  // LINE通知 (Messaging API プッシュ、失敗しても他方は動く)
+  if (lp.form_notify_line_user_id) {
+    const lineMessage = formatSubmissionMessage(lp, safe, result.lastInsertRowid);
+    sendLinePush(lp.form_notify_line_user_id, lineMessage)
+      .then(r => { if (!r.ok) console.error(`[submit] LINE push failed:`, r); })
+      .catch(e => console.error('[submit] LINE exception:', e));
   }
 
   res.json({

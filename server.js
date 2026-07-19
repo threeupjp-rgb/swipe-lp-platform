@@ -87,6 +87,7 @@ const lpFormCols = [
   ['form_line_id_label', 'TEXT'],                 // LINE ID欄のラベル
   ['form_message_label', 'TEXT'],                 // メッセージ欄のラベル
   ['form_message_placeholder', 'TEXT'],           // メッセージ欄のプレースホルダー
+  ['form_notify_line_user_id', 'TEXT'],           // フォーム通知先 LINE user_id (LP毎に設定)
 ];
 for (const [col, def] of lpFormCols) {
   try { db.exec(`ALTER TABLE lps ADD COLUMN ${col} ${def}`); } catch {}

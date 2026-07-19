@@ -869,7 +869,8 @@ async function submitCreateLP() {
         form_email_required: document.getElementById('createFormEmailRequired').checked,
         form_line_id_label: document.getElementById('createFormLineIdLabel').value.trim() || null,
         form_message_label: document.getElementById('createFormMessageLabel').value.trim() || null,
-        form_message_placeholder: document.getElementById('createFormMessagePlaceholder').value.trim() || null
+        form_message_placeholder: document.getElementById('createFormMessagePlaceholder').value.trim() || null,
+        form_notify_line_user_id: document.getElementById('createFormNotifyLineUserId').value.trim() || null
       })
     });
     const data = await res.json();
@@ -946,6 +947,7 @@ async function openEditLP() {
   document.getElementById('editFormLineIdLabel').value = editLpData.form_line_id_label || '';
   document.getElementById('editFormMessageLabel').value = editLpData.form_message_label || '';
   document.getElementById('editFormMessagePlaceholder').value = editLpData.form_message_placeholder || '';
+  document.getElementById('editFormNotifyLineUserId').value = editLpData.form_notify_line_user_id || '';
 
   // ピクセル
   const pixels = config.pixels || {};
@@ -1169,7 +1171,8 @@ async function submitEditLP() {
         form_email_required: document.getElementById('editFormEmailRequired').checked,
         form_line_id_label: document.getElementById('editFormLineIdLabel').value.trim() || null,
         form_message_label: document.getElementById('editFormMessageLabel').value.trim() || null,
-        form_message_placeholder: document.getElementById('editFormMessagePlaceholder').value.trim() || null
+        form_message_placeholder: document.getElementById('editFormMessagePlaceholder').value.trim() || null,
+        form_notify_line_user_id: document.getElementById('editFormNotifyLineUserId').value.trim() || null
       })
     });
     const data = await res.json();

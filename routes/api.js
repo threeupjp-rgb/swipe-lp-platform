@@ -33,7 +33,8 @@ router.post('/lps', (req, res) => {
     scroll_bg_color,
     form_name_label, form_name_placeholder,
     form_phone_required, form_email_required,
-    form_line_id_label, form_message_label, form_message_placeholder } = req.body;
+    form_line_id_label, form_message_label, form_message_placeholder,
+    form_notify_line_user_id } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
@@ -56,8 +57,9 @@ router.post('/lps', (req, res) => {
       scroll_bg_color,
       form_name_label, form_name_placeholder,
       form_phone_required, form_email_required,
-      form_line_id_label, form_message_label, form_message_placeholder)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      form_line_id_label, form_message_label, form_message_placeholder,
+      form_notify_line_user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, name, slug, JSON.stringify(config),
     cta_text || 'お問い合わせ', cta_url || '#',
@@ -88,7 +90,8 @@ router.post('/lps', (req, res) => {
     form_email_required === false ? 0 : 1,
     form_line_id_label || null,
     form_message_label || null,
-    form_message_placeholder || null
+    form_message_placeholder || null,
+    form_notify_line_user_id || null
   );
 
   res.json({ id, slug, url: `/lp/${slug}` });
@@ -155,7 +158,8 @@ router.put('/lps/:lpId', (req, res) => {
   const { scroll_bg_color,
     form_name_label, form_name_placeholder,
     form_phone_required, form_email_required,
-    form_line_id_label, form_message_label, form_message_placeholder } = req.body;
+    form_line_id_label, form_message_label, form_message_placeholder,
+    form_notify_line_user_id } = req.body;
   if (scroll_bg_color !== undefined) { updates.push('scroll_bg_color = ?'); params.push(scroll_bg_color || null); }
   if (form_name_label !== undefined) { updates.push('form_name_label = ?'); params.push(form_name_label || null); }
   if (form_name_placeholder !== undefined) { updates.push('form_name_placeholder = ?'); params.push(form_name_placeholder || null); }
@@ -164,6 +168,7 @@ router.put('/lps/:lpId', (req, res) => {
   if (form_line_id_label !== undefined) { updates.push('form_line_id_label = ?'); params.push(form_line_id_label || null); }
   if (form_message_label !== undefined) { updates.push('form_message_label = ?'); params.push(form_message_label || null); }
   if (form_message_placeholder !== undefined) { updates.push('form_message_placeholder = ?'); params.push(form_message_placeholder || null); }
+  if (form_notify_line_user_id !== undefined) { updates.push('form_notify_line_user_id = ?'); params.push(form_notify_line_user_id || null); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 
