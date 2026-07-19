@@ -16,13 +16,12 @@ router.post('/', (req, res) => {
     const userId = event.source?.userId || 'unknown';
     const type = event.type;
     if (type === 'follow') {
-      console.log(`[LINE Webhook] 🎉 友だち追加: user_id=${userId}`);
+      console.log(`[LINE Webhook] 友だち追加: user_id=${userId}`);
     } else if (type === 'unfollow') {
-      console.log(`[LINE Webhook] 👋 ブロック/削除: user_id=${userId}`);
+      console.log(`[LINE Webhook] ブロック/削除: user_id=${userId}`);
     } else if (type === 'message' && event.message?.type === 'text') {
       const text = event.message.text.slice(0, 100);
-      console.log(`[LINE Webhook] 💬 メッセージ: user_id=${userId} text="${text}"`);
-      // 「/uid」等のコマンドを送ってきたユーザーへの返信は必要なら追加実装
+      console.log(`[LINE Webhook] メッセージ: user_id=${userId} text="${text}"`);
     } else {
       console.log(`[LINE Webhook] event type=${type} user_id=${userId}`);
     }

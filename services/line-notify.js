@@ -39,19 +39,19 @@ async function sendLinePush(userId, message) {
 // フォーム送信内容を LINE 通知用テキストに整形
 function formatSubmissionMessage(lp, submission, submissionId) {
   const lines = [
-    `📩 新しい応募が届きました`,
+    `新しい応募が届きました`,
     ``,
-    `🏬 LP: ${lp.name || lp.slug}`
+    `LP: ${lp.name || lp.slug}`
   ];
-  if (submission.name) lines.push(`👤 お名前: ${submission.name}`);
-  if (submission.phone) lines.push(`📞 電話: ${submission.phone}`);
-  if (submission.line_id) lines.push(`💬 LINE ID: ${submission.line_id}`);
-  if (submission.email) lines.push(`📧 メール: ${submission.email}`);
-  if (submission.area) lines.push(`📍 エリア: ${submission.area}`);
-  if (submission.message) lines.push(`📝 メッセージ:\n${submission.message}`);
+  if (submission.name) lines.push(`お名前: ${submission.name}`);
+  if (submission.phone) lines.push(`電話: ${submission.phone}`);
+  if (submission.line_id) lines.push(`LINE ID: ${submission.line_id}`);
+  if (submission.email) lines.push(`メール: ${submission.email}`);
+  if (submission.area) lines.push(`エリア: ${submission.area}`);
+  if (submission.message) lines.push(`メッセージ:\n${submission.message}`);
   if (submission.utm_source || submission.utm_campaign) {
     lines.push(``);
-    lines.push(`🎯 流入:`);
+    lines.push(`流入:`);
     if (submission.utm_source) lines.push(`  source: ${submission.utm_source}`);
     if (submission.utm_medium) lines.push(`  medium: ${submission.utm_medium}`);
     if (submission.utm_campaign) lines.push(`  campaign: ${submission.utm_campaign}`);
