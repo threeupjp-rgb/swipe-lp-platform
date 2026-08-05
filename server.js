@@ -96,6 +96,9 @@ for (const [col, def] of lpFormCols) {
 // submissions に area 列がない既存DB向けマイグレーション
 try { db.exec(`ALTER TABLE submissions ADD COLUMN area TEXT`); } catch {}
 
+// マイグレーション: LINE友だち追加計測アカウントの紐付け列
+try { db.exec(`ALTER TABLE lps ADD COLUMN line_account_id TEXT`); } catch {}
+
 // プライマリドメインへのリダイレクト
 // 環境変数 PRIMARY_HOST 設定時、それ以外のホスト (onrender.com等) からのアクセスは301で誘導
 // 除外: /health (Renderヘルスチェック), /api/* (Cron Job 等の内部用), /uploads/* (画像直接配信)
@@ -120,7 +123,8 @@ const compression = require('compression');
 // threshold=2048 で小さなレスポンスは圧縮しない
 app.use(compression({ memLevel: 1, threshold: 2048 }));
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+// rawBody は LINE webhook の署名検証 (HMAC-SHA256) に必要
+app.use(express.json({ limit: '1mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.text({ limit: '1mb' }));
 
 // メモリ計測ミドルウェア: 1リクエストで heap が +30MB 超のものを警告ログ
@@ -199,6 +203,12 @@ const cvCapiRoutes = require('./routes/cv-capi');
 app.use('/api/cv-capi', cvCapiRoutes);
 const lineWebhookRoutes = require('./routes/line-webhook');
 app.use('/api/line-webhook', lineWebhookRoutes);
+// 顧客向けLINE追加レポート (report_token 認証、Basic認証なし)
+const lineReportRoutes = require('./routes/line-report');
+app.use('/api/line-report', lineReportRoutes);
+app.get('/report/line/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'report', 'line.html'));
+});
 app.get('/api/lp-by-slug/:slug', (req, res) => {
   const lp = db.prepare('SELECT * FROM lps WHERE slug = ?').get(req.params.slug);
   if (!lp) return res.status(404).json({ error: 'LP not found' });

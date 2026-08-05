@@ -72,6 +72,36 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (lp_id) REFERENCES lps(id)
 );
 
+-- LINE公式アカウント (友だち追加計測用)
+CREATE TABLE IF NOT EXISTS line_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    channel_secret TEXT,
+    access_token TEXT,
+    report_token TEXT UNIQUE NOT NULL,
+    note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- LINE友だち追加/ブロックイベント (webhookから保存、timestampはUTC)
+CREATE TABLE IF NOT EXISTS line_follow_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT NOT NULL,
+    line_user_id TEXT,
+    event_type TEXT NOT NULL,
+    is_first INTEGER DEFAULT 1,
+    display_name TEXT,
+    webhook_event_id TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES line_accounts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_line_follow_account_ts ON line_follow_events(account_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_line_follow_account_user ON line_follow_events(account_id, line_user_id);
+-- webhook再送 (redelivery) の二重カウント防止
+CREATE UNIQUE INDEX IF NOT EXISTS idx_line_follow_webhook_event ON line_follow_events(webhook_event_id);
+
 -- Meta Conversions API トークン (ピクセル単位で管理)
 CREATE TABLE IF NOT EXISTS meta_capi_tokens (
     pixel_id TEXT PRIMARY KEY,

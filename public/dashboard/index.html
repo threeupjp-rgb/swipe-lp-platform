@@ -48,6 +48,7 @@
     <a id="lpLink" href="#" target="_blank" class="btn btn-primary">LPを見る</a>
     <button class="btn btn-ghost" id="notifyBtn" onclick="openNotifySettings()" title="反応低下アラート設定">🔔 監視</button>
     <button class="btn btn-ghost" onclick="openCapiTokens()" title="Meta Conversions API トークン管理">⚡ CAPI</button>
+    <button class="btn btn-ghost" onclick="openLineAccounts()" title="LINE友だち追加計測の管理">LINE計測</button>
     <button class="btn btn-ghost" onclick="openEditLP()">編集</button>
     <button class="btn btn-primary" style="background:#22c55e;" onclick="openCreateLP()">+ LP作成</button>
   </div>
@@ -340,6 +341,18 @@
         </div>
       </div>
 
+      <!-- LINE友だち追加計測 -->
+      <div class="form-section">
+        <h4 class="form-section-title">LINE友だち追加計測 (任意)</h4>
+        <div class="form-row">
+          <label>計測アカウント</label>
+          <select id="createLineAccount">
+            <option value="">計測しない</option>
+          </select>
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">CTAでLINEに誘導する場合、ヘッダーの「LINE計測」で登録したアカウントを選ぶと、このLPのクリック数と友だち追加数が日次レポートで突合されます。</small>
+        </div>
+      </div>
+
       <!-- フォーム機能 -->
       <div class="form-section">
         <h4 class="form-section-title">CTAアクション</h4>
@@ -595,6 +608,18 @@
         </div>
       </div>
 
+      <!-- LINE友だち追加計測 -->
+      <div class="form-section">
+        <h4 class="form-section-title">LINE友だち追加計測 (任意)</h4>
+        <div class="form-row">
+          <label>計測アカウント</label>
+          <select id="editLineAccount">
+            <option value="">計測しない</option>
+          </select>
+          <small style="display:block;color:var(--text-muted);font-size:11px;margin-top:4px;">CTAでLINEに誘導する場合、ヘッダーの「LINE計測」で登録したアカウントを選ぶと、このLPのクリック数と友だち追加数が日次レポートで突合されます。</small>
+        </div>
+      </div>
+
       <!-- フォーム機能 -->
       <div class="form-section">
         <h4 class="form-section-title">CTAアクション</h4>
@@ -833,6 +858,56 @@
 
       <h3 style="font-size:14px;margin:0 0 10px 0;">登録済みトークン一覧</h3>
       <div id="capiTokensList" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--text-muted);text-align:center;padding:20px;">読み込み中...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LINE友だち追加計測 管理モーダル -->
+<div class="modal" id="lineAccountsModal" style="display:none;">
+  <div class="modal-content" style="max-width:760px;">
+    <div class="modal-header">
+      <h2>LINE友だち追加計測</h2>
+      <button class="modal-close" onclick="closeLineAccounts()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(6,199,85,0.08);border:1px solid rgba(6,199,85,0.3);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:12.5px;line-height:1.7;color:var(--text);">
+        LINE公式アカウントへの<strong>友だち追加/ブロックを実数でカウント</strong>し、日次レポート (顧客に共有可能なURL) を発行します。<br>
+        <strong>設定手順:</strong><br>
+        1. 下のフォームでアカウントを登録 (Channel Secret は LINE Developers > チャネル基本設定からコピー)<br>
+        2. 登録後に表示される <strong>Webhook URL</strong> を LINE Developers > Messaging API設定 > Webhook URL に設定し、「Webhookの利用」をON<br>
+        3. LPの編集画面で「LINE友だち追加計測」にこのアカウントを紐付けるとクリック数と突合されます<br>
+        ※ 対象アカウントで Lステップ等の他ツールが Webhook を使用中の場合は併用できません (Webhook URLは1チャネル1本)
+      </div>
+
+      <div style="margin-bottom:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;">
+        <h3 style="font-size:14px;margin:0 0 12px 0;" id="lineAccFormTitle">新規登録</h3>
+        <input type="hidden" id="lineAccEditingId" value="">
+        <div class="form-row">
+          <label>アカウント名 (店舗名など)</label>
+          <input type="text" id="lineAccName" placeholder="例: ○○店 求人用LINE" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label>Channel Secret <span style="color:var(--text-muted);font-size:11px;">(署名検証用・推奨。LINE Developers > チャネル基本設定)</span></label>
+          <input type="text" id="lineAccSecret" placeholder="32桁の英数字 (空欄なら署名検証なしで受信)" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label>Channel Access Token <span style="color:var(--text-muted);font-size:11px;">(任意。設定すると追加ユーザーの表示名を取得)</span></label>
+          <input type="text" id="lineAccToken" placeholder="長期チャネルアクセストークン (空でOK)" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <label>メモ <span style="color:var(--text-muted);font-size:11px;">(管理用)</span></label>
+          <input type="text" id="lineAccNote" placeholder="例: 送客アフィ 2026-08開始">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;padding:12px;" onclick="saveLineAccount()">保存</button>
+          <button class="btn btn-ghost" id="lineAccCancelEdit" style="display:none;padding:12px;" onclick="resetLineAccountForm()">編集をやめる</button>
+        </div>
+      </div>
+
+      <h3 style="font-size:14px;margin:0 0 10px 0;">登録済みアカウント</h3>
+      <div id="lineAccountsList" style="display:flex;flex-direction:column;gap:8px;">
         <div style="color:var(--text-muted);text-align:center;padding:20px;">読み込み中...</div>
       </div>
     </div>

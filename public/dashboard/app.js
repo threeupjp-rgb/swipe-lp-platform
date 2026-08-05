@@ -3,6 +3,7 @@ const API = '';
 
 let currentLpId = null;
 let currentLpConfig = null;
+let currentLpLineAccountId = null;
 let currentTab = 'overview';
 let pollTimer = null;
 let heatmapRenderer = null;
@@ -58,6 +59,7 @@ async function init() {
   setupTabs();
   setupDateFilter();
   startPolling();
+  loadLineAccounts(); // LP紐付けセレクト・概要カード用 (待たない)
 }
 
 // 期間フィルター初期化
@@ -323,6 +325,7 @@ async function loadLpDetail(lpId) {
   const res = await fetch(`${API}/api/lps/${lpId}`);
   const lp = await res.json();
   currentLpConfig = lp.config;
+  currentLpLineAccountId = lp.line_account_id || null;
 
   // LP名更新
   document.getElementById('lpName').textContent = lp.name;
@@ -436,6 +439,40 @@ async function loadOverview() {
   const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps?_=1${dq}`);
   const stepsData = await stepsRes.json();
   renderStepTable(document.getElementById('overviewStepTable'), stepsData);
+
+  // LINE友だち追加カード (紐付けLPのみ)
+  updateLineMetricCard();
+}
+
+// 概要タブのLINE友だち追加カード
+async function updateLineMetricCard() {
+  const grid = document.querySelector('.metrics-grid');
+  let card = document.getElementById('metricLineCard');
+  if (!currentLpLineAccountId) {
+    if (card) card.remove();
+    return;
+  }
+  if (!card) {
+    card = document.createElement('div');
+    card.className = 'metric-card';
+    card.id = 'metricLineCard';
+    card.innerHTML = `
+      <div class="label">LINE友だち追加</div>
+      <div class="value success" id="metricLineFollows">-</div>
+      <div class="sub" id="metricLineSub">-</div>
+    `;
+    grid.appendChild(card);
+  }
+  try {
+    const dq = getDateQuery();
+    const res = await fetch(`${API}/api/line-accounts/${currentLpLineAccountId}/daily?_=1${dq}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const t = data.totals;
+    document.getElementById('metricLineFollows').textContent = t.follows.toLocaleString();
+    document.getElementById('metricLineSub').textContent =
+      `ブロック ${t.unfollows} / 追加率 ${t.followRate === null ? '-' : t.followRate + '%'} (${data.account.name})`;
+  } catch {}
 }
 
 // ステップ分析タブ
@@ -605,7 +642,8 @@ function refreshData() {
 let createDirection = 'vertical';
 let createSteps = [];
 
-function openCreateLP() {
+async function openCreateLP() {
+  await loadLineAccounts();
   createDirection = 'vertical';
   createSteps = [
     { title: '', description: '', image: null, imageUrl: '', bgGradient: '', textColor: '#ffffff' }
@@ -643,6 +681,7 @@ function openCreateLP() {
   document.getElementById('createPixelGoogleLabel').value = '';
   document.getElementById('createPixelGtm').value = '';
   document.getElementById('createPixelLine').value = '';
+  populateLineAccountSelect('createLineAccount', '');
   renderStepsEditor();
   document.getElementById('createLpModal').classList.add('visible');
 }
@@ -870,7 +909,8 @@ async function submitCreateLP() {
         form_line_id_label: document.getElementById('createFormLineIdLabel').value.trim() || null,
         form_message_label: document.getElementById('createFormMessageLabel').value.trim() || null,
         form_message_placeholder: document.getElementById('createFormMessagePlaceholder').value.trim() || null,
-        form_notify_line_user_id: document.getElementById('createFormNotifyLineUserId').value.trim() || null
+        form_notify_line_user_id: document.getElementById('createFormNotifyLineUserId').value.trim() || null,
+        line_account_id: document.getElementById('createLineAccount').value || null
       })
     });
     const data = await res.json();
@@ -948,6 +988,10 @@ async function openEditLP() {
   document.getElementById('editFormMessageLabel').value = editLpData.form_message_label || '';
   document.getElementById('editFormMessagePlaceholder').value = editLpData.form_message_placeholder || '';
   document.getElementById('editFormNotifyLineUserId').value = editLpData.form_notify_line_user_id || '';
+
+  // LINE友だち追加計測の紐付け
+  await loadLineAccounts();
+  populateLineAccountSelect('editLineAccount', editLpData.line_account_id || '');
 
   // ピクセル
   const pixels = config.pixels || {};
@@ -1172,7 +1216,8 @@ async function submitEditLP() {
         form_line_id_label: document.getElementById('editFormLineIdLabel').value.trim() || null,
         form_message_label: document.getElementById('editFormMessageLabel').value.trim() || null,
         form_message_placeholder: document.getElementById('editFormMessagePlaceholder').value.trim() || null,
-        form_notify_line_user_id: document.getElementById('editFormNotifyLineUserId').value.trim() || null
+        form_notify_line_user_id: document.getElementById('editFormNotifyLineUserId').value.trim() || null,
+        line_account_id: document.getElementById('editLineAccount').value || null
       })
     });
     const data = await res.json();
@@ -1450,4 +1495,167 @@ async function testCapiToken(pixelId) {
   } catch (e) {
     alert('通信エラー: ' + e.message);
   }
+}
+
+// ===== LINE友だち追加計測 アカウント管理 =====
+let lineAccounts = [];
+
+async function loadLineAccounts() {
+  try {
+    const res = await fetch('/api/line-accounts');
+    if (!res.ok) return;
+    lineAccounts = await res.json();
+  } catch {}
+}
+
+// LP作成/編集フォームの計測アカウントセレクトを構築
+function populateLineAccountSelect(selectId, selectedId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.innerHTML = '<option value="">計測しない</option>' + lineAccounts.map(a =>
+    `<option value="${escapeHtml(a.id)}"${a.id === selectedId ? ' selected' : ''}>${escapeHtml(a.name)}</option>`
+  ).join('');
+}
+
+function openLineAccounts() {
+  document.getElementById('lineAccountsModal').style.display = 'flex';
+  resetLineAccountForm();
+  renderLineAccountsList();
+}
+
+function closeLineAccounts() {
+  document.getElementById('lineAccountsModal').style.display = 'none';
+}
+
+function resetLineAccountForm() {
+  document.getElementById('lineAccEditingId').value = '';
+  document.getElementById('lineAccName').value = '';
+  document.getElementById('lineAccSecret').value = '';
+  document.getElementById('lineAccToken').value = '';
+  document.getElementById('lineAccNote').value = '';
+  document.getElementById('lineAccFormTitle').textContent = '新規登録';
+  document.getElementById('lineAccCancelEdit').style.display = 'none';
+}
+
+async function renderLineAccountsList() {
+  const listEl = document.getElementById('lineAccountsList');
+  listEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">読み込み中...</div>';
+  await loadLineAccounts();
+
+  if (lineAccounts.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">まだアカウントが登録されていません</div>';
+    return;
+  }
+
+  listEl.innerHTML = lineAccounts.map(a => {
+    const webhookUrl = `${location.origin}/api/line-webhook/${a.id}`;
+    const reportUrl = `${location.origin}/report/line/${a.report_token}`;
+    return `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:13.5px;">${escapeHtml(a.name)}</div>
+            ${a.note ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${escapeHtml(a.note)}</div>` : ''}
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">
+              累計追加 <strong style="color:#06C755;">${a.total_follows}</strong>
+              / ブロック ${a.total_unfollows}
+              / 紐付けLP ${a.linked_lps}件
+              ${a.has_secret ? '' : ' / <span style="color:#f59e0b;">署名検証なし</span>'}
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+            <a class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" href="${reportUrl}" target="_blank">レポートを開く</a>
+            <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="startEditLineAccount('${escapeHtml(a.id)}')">編集</button>
+            <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;color:var(--danger);" onclick="deleteLineAccount('${escapeHtml(a.id)}')">削除</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+            <span style="color:var(--text-muted);flex-shrink:0;width:96px;">Webhook URL</span>
+            <code style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${webhookUrl}</code>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="copyToClipboard('${webhookUrl}')">コピー</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+            <span style="color:var(--text-muted);flex-shrink:0;width:96px;">レポートURL</span>
+            <code style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${reportUrl}</code>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="copyToClipboard('${reportUrl}')">コピー</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="regenerateLineToken('${escapeHtml(a.id)}')" title="URLが漏れた場合に無効化して再発行">再発行</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveLineAccount() {
+  const editingId = document.getElementById('lineAccEditingId').value;
+  const name = document.getElementById('lineAccName').value.trim();
+  const channel_secret = document.getElementById('lineAccSecret').value.trim();
+  const access_token = document.getElementById('lineAccToken').value.trim();
+  const note = document.getElementById('lineAccNote').value.trim();
+  if (!name) return alert('アカウント名を入力してください');
+
+  // 編集時: Secret/Token は入力された場合のみ更新 (空欄=変更しない)
+  const payload = { name, note: note || null };
+  if (!editingId || channel_secret) payload.channel_secret = channel_secret || null;
+  if (!editingId || access_token) payload.access_token = access_token || null;
+  try {
+    const res = await fetch(editingId ? `/api/line-accounts/${editingId}` : '/api/line-accounts', {
+      method: editingId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return alert('保存失敗: ' + (data.error || res.status));
+    resetLineAccountForm();
+    await renderLineAccountsList();
+    if (!editingId) {
+      alert('登録しました。\n一覧の「Webhook URL」を LINE Developers の Messaging API設定 > Webhook URL に設定し、「Webhookの利用」をONにしてください。');
+    }
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+  }
+}
+
+function startEditLineAccount(id) {
+  const a = lineAccounts.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('lineAccEditingId').value = a.id;
+  document.getElementById('lineAccName').value = a.name;
+  document.getElementById('lineAccSecret').value = '';
+  document.getElementById('lineAccToken').value = '';
+  document.getElementById('lineAccNote').value = a.note || '';
+  document.getElementById('lineAccFormTitle').textContent = `編集: ${a.name} (Secret/Tokenは変更する場合のみ入力)`;
+  document.getElementById('lineAccCancelEdit').style.display = '';
+}
+
+async function deleteLineAccount(id) {
+  const a = lineAccounts.find(x => x.id === id);
+  if (!a) return;
+  if (!confirm(`「${a.name}」を削除しますか？\n計測済みの追加/ブロックデータも全て削除され、レポートURLも無効になります。`)) return;
+  try {
+    const res = await fetch(`/api/line-accounts/${id}`, { method: 'DELETE' });
+    if (!res.ok) return alert('削除失敗');
+    renderLineAccountsList();
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+  }
+}
+
+async function regenerateLineToken(id) {
+  if (!confirm('レポートURLを再発行しますか？\n現在のURLは無効になり、顧客に渡し直しが必要です。')) return;
+  try {
+    const res = await fetch(`/api/line-accounts/${id}/regenerate-token`, { method: 'POST' });
+    if (!res.ok) return alert('再発行失敗');
+    renderLineAccountsList();
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(
+    () => {},
+    () => prompt('コピーできませんでした。手動でコピーしてください:', text)
+  );
 }

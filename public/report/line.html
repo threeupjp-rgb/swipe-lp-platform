@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>LINE友だち追加レポート</title>
+<style>
+  :root {
+    --text: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --green: #06C755;
+    --red: #dc2626;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  .header { margin-bottom: 20px; }
+  .header .report-label { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; }
+  .header h1 { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .header .period { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .preset-btn {
+    padding: 7px 14px; font-size: 13px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--text); cursor: pointer;
+  }
+  .preset-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .custom-range { display: none; gap: 6px; align-items: center; }
+  .custom-range.visible { display: flex; }
+  .custom-range input {
+    padding: 6px 8px; font-size: 13px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text);
+  }
+  .csv-btn {
+    margin-left: auto; padding: 7px 14px; font-size: 13px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--text); cursor: pointer;
+  }
+  .csv-btn:hover, .preset-btn:hover:not(.active) { border-color: #c5cad3; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  @media (min-width: 640px) { .summary { grid-template-columns: repeat(6, 1fr); } }
+  .summary .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .summary .label { font-size: 11px; color: var(--muted); }
+  .summary .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .summary .value.green { color: var(--green); }
+  .summary .value.red { color: var(--red); }
+
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
+  thead th {
+    padding: 10px 12px; text-align: right; font-size: 12px; font-weight: 600;
+    color: var(--muted); border-bottom: 1px solid var(--border); background: #fafbfc;
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  tbody td {
+    padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  tbody td:first-child { text-align: left; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.total-row td { font-weight: 700; background: #fafbfc; }
+  td .dow { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  td .dow.sat { color: #2563eb; }
+  td .dow.sun { color: var(--red); }
+  td.follows-cell { color: var(--green); font-weight: 700; }
+  td.zero { color: #c0c5cd; }
+
+  .note { font-size: 11.5px; color: var(--muted); margin-top: 14px; line-height: 1.7; }
+  .state { padding: 48px 16px; text-align: center; color: var(--muted); }
+  .footer { margin-top: 28px; font-size: 11px; color: #9ca3af; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="report-label">LINE友だち追加レポート</div>
+    <h1 id="accountName">読み込み中...</h1>
+    <div class="period" id="periodLabel"></div>
+  </div>
+
+  <div class="controls">
+    <button class="preset-btn active" data-preset="this-month">今月</button>
+    <button class="preset-btn" data-preset="last-month">先月</button>
+    <button class="preset-btn" data-preset="30d">過去30日</button>
+    <button class="preset-btn" data-preset="all">全期間</button>
+    <button class="preset-btn" data-preset="custom">期間指定</button>
+    <div class="custom-range" id="customRange">
+      <input type="date" id="dateFrom">
+      <span style="color:var(--muted);">〜</span>
+      <input type="date" id="dateTo">
+    </div>
+    <button class="csv-btn" onclick="downloadCsv()">CSVダウンロード</button>
+  </div>
+
+  <div class="summary" id="summary" style="display:none;">
+    <div class="card"><div class="label">友だち追加</div><div class="value green" id="sumFollows">-</div></div>
+    <div class="card"><div class="label">うち新規</div><div class="value" id="sumFirst">-</div></div>
+    <div class="card"><div class="label">ブロック</div><div class="value red" id="sumUnfollows">-</div></div>
+    <div class="card"><div class="label">純増</div><div class="value" id="sumNet">-</div></div>
+    <div class="card"><div class="label">クリック</div><div class="value" id="sumClicks">-</div></div>
+    <div class="card"><div class="label">追加率</div><div class="value" id="sumRate">-</div></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <div class="state" id="stateBox">読み込み中...</div>
+      <table id="dailyTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>クリック</th>
+            <th>友だち追加</th>
+            <th>うち新規</th>
+            <th>ブロック</th>
+            <th>純増</th>
+            <th>追加率</th>
+          </tr>
+        </thead>
+        <tbody id="dailyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="note">
+    ・「友だち追加」はLINE公式アカウントへの追加をLINEのWebhook通知から集計した実数です。「うち新規」は過去に一度も追加したことがないユーザーの追加数、「純増」は追加−ブロックです。<br>
+    ・「クリック」はLPのCTAボタン (LINE誘導ボタン) のクリック数、「追加率」は追加÷クリックです。<br>
+    ・日付は日本時間 (JST) 基準です。
+  </div>
+
+  <div class="footer">Powered by SwipeLP</div>
+</div>
+
+<script>
+const token = location.pathname.split('/').pop();
+let currentPreset = 'this-month';
+let currentData = null;
+
+function jstToday() {
+  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+function presetRange(preset) {
+  const today = jstToday();
+  const [y, m] = today.split('-').map(Number);
+  switch (preset) {
+    case 'this-month':
+      return { from: `${today.slice(0, 7)}-01`, to: today };
+    case 'last-month': {
+      const d = new Date(Date.UTC(y, m - 2, 1)); // 前月1日
+      const last = new Date(Date.UTC(y, m - 1, 0)); // 前月末日
+      return { from: d.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10) };
+    }
+    case '30d': {
+      const from = new Date(Date.now() + 9 * 3600 * 1000 - 29 * 86400000).toISOString().slice(0, 10);
+      return { from, to: today };
+    }
+    case 'custom':
+      return {
+        from: document.getElementById('dateFrom').value || null,
+        to: document.getElementById('dateTo').value || null
+      };
+    default: // all
+      return { from: null, to: null };
+  }
+}
+
+async function loadData() {
+  const { from, to } = presetRange(currentPreset);
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+
+  const stateBox = document.getElementById('stateBox');
+  const table = document.getElementById('dailyTable');
+
+  try {
+    const res = await fetch(`/api/line-report/${token}/daily?${params}`);
+    if (!res.ok) {
+      stateBox.textContent = res.status === 404 ? 'レポートが見つかりません。URLをご確認ください。' : '読み込みに失敗しました。';
+      stateBox.style.display = '';
+      table.style.display = 'none';
+      return;
+    }
+    currentData = await res.json();
+    render(currentData);
+  } catch (e) {
+    stateBox.textContent = '通信エラーが発生しました。再読み込みしてください。';
+    stateBox.style.display = '';
+    table.style.display = 'none';
+  }
+}
+
+const DOW = ['日', '月', '火', '水', '木', '金', '土'];
+
+function fmtDate(d) {
+  const [y, m, day] = d.split('-');
+  const dow = new Date(`${d}T00:00:00Z`).getUTCDay();
+  const cls = dow === 0 ? 'sun' : dow === 6 ? 'sat' : '';
+  return `${Number(m)}/${Number(day)}<span class="dow ${cls}">(${DOW[dow]})</span>`;
+}
+
+function num(v) { return v.toLocaleString(); }
+function cell(v, extraClass) {
+  const cls = [v === 0 ? 'zero' : '', extraClass || ''].filter(Boolean).join(' ');
+  return `<td${cls ? ` class="${cls}"` : ''}>${num(v)}</td>`;
+}
+
+function render(data) {
+  document.getElementById('accountName').textContent = data.account.name;
+  document.title = `${data.account.name} | LINE友だち追加レポート`;
+  document.getElementById('periodLabel').textContent = `集計期間: ${data.from} 〜 ${data.to}`;
+
+  const t = data.totals;
+  document.getElementById('sumFollows').textContent = num(t.follows);
+  document.getElementById('sumFirst').textContent = num(t.firstFollows);
+  document.getElementById('sumUnfollows').textContent = num(t.unfollows);
+  document.getElementById('sumNet').textContent = num(t.net);
+  document.getElementById('sumClicks').textContent = num(t.clicks);
+  document.getElementById('sumRate').textContent = t.followRate === null ? '-' : t.followRate + '%';
+  document.getElementById('summary').style.display = '';
+
+  const body = document.getElementById('dailyBody');
+  const totalRow = `
+    <tr class="total-row">
+      <td>合計</td>
+      <td>${num(t.clicks)}</td>
+      <td>${num(t.follows)}</td>
+      <td>${num(t.firstFollows)}</td>
+      <td>${num(t.unfollows)}</td>
+      <td>${num(t.net)}</td>
+      <td>${t.followRate === null ? '-' : t.followRate + '%'}</td>
+    </tr>`;
+  body.innerHTML = totalRow + data.days.map(r => `
+    <tr>
+      <td>${fmtDate(r.date)}</td>
+      ${cell(r.clicks)}
+      ${cell(r.follows, r.follows > 0 ? 'follows-cell' : '')}
+      ${cell(r.firstFollows)}
+      ${cell(r.unfollows)}
+      ${cell(r.net)}
+      <td class="${r.followRate === null ? 'zero' : ''}">${r.followRate === null ? '-' : r.followRate + '%'}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('stateBox').style.display = 'none';
+  document.getElementById('dailyTable').style.display = '';
+}
+
+function downloadCsv() {
+  if (!currentData) return;
+  const headers = ['日付', 'クリック', '友だち追加', 'うち新規', 'ブロック', '純増', '追加率(%)'];
+  const rows = currentData.days.map(r => [
+    r.date, r.clicks, r.follows, r.firstFollows, r.unfollows, r.net,
+    r.followRate === null ? '' : r.followRate
+  ]);
+  const t = currentData.totals;
+  rows.push(['合計', t.clicks, t.follows, t.firstFollows, t.unfollows, t.net, t.followRate === null ? '' : t.followRate]);
+  const csv = '﻿' + [headers, ...rows].map(r =>
+    r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `line-report_${currentData.from}_${currentData.to}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentPreset = btn.dataset.preset;
+    document.getElementById('customRange').classList.toggle('visible', currentPreset === 'custom');
+    if (currentPreset !== 'custom') loadData();
+  });
+});
+document.getElementById('dateFrom').addEventListener('change', () => { if (currentPreset === 'custom') loadData(); });
+document.getElementById('dateTo').addEventListener('change', () => { if (currentPreset === 'custom') loadData(); });
+
+loadData();
+</script>
+</body>
+</html>

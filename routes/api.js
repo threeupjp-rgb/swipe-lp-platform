@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const AnalyticsService = require('../services/analytics');
 const { checkAndNotify } = require('../services/alerts');
+const { getLineDaily } = require('../services/line-analytics');
 
 // LP一覧
 router.get('/lps', (req, res) => {
@@ -34,7 +35,7 @@ router.post('/lps', (req, res) => {
     form_name_label, form_name_placeholder,
     form_phone_required, form_email_required,
     form_line_id_label, form_message_label, form_message_placeholder,
-    form_notify_line_user_id } = req.body;
+    form_notify_line_user_id, line_account_id } = req.body;
   if (!name || !slug || !config) {
     return res.status(400).json({ error: 'name, slug, config は必須です' });
   }
@@ -58,8 +59,8 @@ router.post('/lps', (req, res) => {
       form_name_label, form_name_placeholder,
       form_phone_required, form_email_required,
       form_line_id_label, form_message_label, form_message_placeholder,
-      form_notify_line_user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      form_notify_line_user_id, line_account_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, name, slug, JSON.stringify(config),
     cta_text || 'お問い合わせ', cta_url || '#',
@@ -91,7 +92,8 @@ router.post('/lps', (req, res) => {
     form_line_id_label || null,
     form_message_label || null,
     form_message_placeholder || null,
-    form_notify_line_user_id || null
+    form_notify_line_user_id || null,
+    line_account_id || null
   );
 
   res.json({ id, slug, url: `/lp/${slug}` });
@@ -169,6 +171,9 @@ router.put('/lps/:lpId', (req, res) => {
   if (form_message_label !== undefined) { updates.push('form_message_label = ?'); params.push(form_message_label || null); }
   if (form_message_placeholder !== undefined) { updates.push('form_message_placeholder = ?'); params.push(form_message_placeholder || null); }
   if (form_notify_line_user_id !== undefined) { updates.push('form_notify_line_user_id = ?'); params.push(form_notify_line_user_id || null); }
+
+  const { line_account_id } = req.body;
+  if (line_account_id !== undefined) { updates.push('line_account_id = ?'); params.push(line_account_id || null); }
 
   if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
 
@@ -388,6 +393,90 @@ router.post('/capi-tokens/:pixelId/test', async (req, res) => {
     res.json({ ok: true, event_id: eventId, ...json });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ===== LINE友だち追加計測: アカウント管理 =====
+router.get('/line-accounts', (req, res) => {
+  const rows = req.db.prepare(`
+    SELECT a.id, a.name, a.note, a.report_token, a.created_at,
+      CASE WHEN a.channel_secret IS NOT NULL AND a.channel_secret != '' THEN 1 ELSE 0 END AS has_secret,
+      CASE WHEN a.access_token IS NOT NULL AND a.access_token != '' THEN 1 ELSE 0 END AS has_token,
+      (SELECT COUNT(*) FROM line_follow_events f WHERE f.account_id = a.id AND f.event_type = 'follow') AS total_follows,
+      (SELECT COUNT(*) FROM line_follow_events f WHERE f.account_id = a.id AND f.event_type = 'unfollow') AS total_unfollows,
+      (SELECT COUNT(*) FROM lps l WHERE l.line_account_id = a.id) AS linked_lps
+    FROM line_accounts a
+    ORDER BY a.created_at DESC
+  `).all();
+  res.json(rows);
+});
+
+router.post('/line-accounts', (req, res) => {
+  const { name, channel_secret, access_token, note } = req.body || {};
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name (アカウント名) は必須です' });
+  }
+  const crypto = require('crypto');
+  const id = crypto.randomUUID();
+  const reportToken = crypto.randomBytes(16).toString('hex');
+  req.db.prepare(`
+    INSERT INTO line_accounts (id, name, channel_secret, access_token, report_token, note)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, String(name).trim(), channel_secret || null, access_token || null, reportToken, note || null);
+  res.json({ id, report_token: reportToken });
+});
+
+router.put('/line-accounts/:id', (req, res) => {
+  const account = req.db.prepare('SELECT id FROM line_accounts WHERE id = ?').get(req.params.id);
+  if (!account) return res.status(404).json({ error: 'account not found' });
+
+  const { name, channel_secret, access_token, note } = req.body || {};
+  const updates = [];
+  const params = [];
+  if (name !== undefined) {
+    if (!String(name).trim()) return res.status(400).json({ error: 'name は空にできません' });
+    updates.push('name = ?'); params.push(String(name).trim());
+  }
+  if (channel_secret !== undefined) { updates.push('channel_secret = ?'); params.push(channel_secret || null); }
+  if (access_token !== undefined) { updates.push('access_token = ?'); params.push(access_token || null); }
+  if (note !== undefined) { updates.push('note = ?'); params.push(note || null); }
+  if (updates.length === 0) return res.status(400).json({ error: '更新項目がありません' });
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  params.push(req.params.id);
+  req.db.prepare(`UPDATE line_accounts SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  res.json({ success: true });
+});
+
+// レポートURLのトークン再発行 (URLが漏れた場合の無効化用)
+router.post('/line-accounts/:id/regenerate-token', (req, res) => {
+  const account = req.db.prepare('SELECT id FROM line_accounts WHERE id = ?').get(req.params.id);
+  if (!account) return res.status(404).json({ error: 'account not found' });
+  const crypto = require('crypto');
+  const reportToken = crypto.randomBytes(16).toString('hex');
+  req.db.prepare('UPDATE line_accounts SET report_token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run(reportToken, req.params.id);
+  res.json({ report_token: reportToken });
+});
+
+router.delete('/line-accounts/:id', (req, res) => {
+  const account = req.db.prepare('SELECT id FROM line_accounts WHERE id = ?').get(req.params.id);
+  if (!account) return res.status(404).json({ error: 'account not found' });
+  req.db.prepare('DELETE FROM line_follow_events WHERE account_id = ?').run(req.params.id);
+  req.db.prepare('UPDATE lps SET line_account_id = NULL WHERE line_account_id = ?').run(req.params.id);
+  req.db.prepare('DELETE FROM line_accounts WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// 日次集計 (管理画面用。顧客向けは /api/line-report/:token/daily)
+router.get('/line-accounts/:id/daily', (req, res) => {
+  const account = req.db.prepare('SELECT id, name FROM line_accounts WHERE id = ?').get(req.params.id);
+  if (!account) return res.status(404).json({ error: 'account not found' });
+  try {
+    const data = getLineDaily(req.db, account.id, req.query.from || null, req.query.to || null);
+    res.json({ account: { id: account.id, name: account.name }, ...data });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 
