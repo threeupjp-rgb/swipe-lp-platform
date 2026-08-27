@@ -816,7 +816,7 @@ body.dir-scroll .scroll-section {
   position: relative;
   width: 100%;
   /* 画像なしセクション (bgGradientのみ) のフォールバック高さ。
-     画像ありセクションは JS で minHeight: auto に上書きされ、画像のアスペクト比で決まる */
+     画像ありセクションは .has-image で min-height が外れ、画像のアスペクト比で決まる */
   min-height: 100vh;
   min-height: 100svh;
   display: block;
@@ -858,6 +858,20 @@ body.dir-scroll .scroll-section img.step-image {
   object-fit: cover;
   object-position: center center;
   display: block;
+}
+
+/* 画像ありセクション: 高さを画像のアスペクト比に合わせ、
+   レターボックス黒帯 (セクション間の隙間) を出さない */
+body.dir-scroll .scroll-section.has-image {
+  min-height: 0;
+}
+body.dir-scroll .scroll-section.has-image .step-bg {
+  position: relative;
+  inset: auto;
+}
+body.dir-scroll .scroll-section.has-image img.step-image {
+  height: auto;
+  object-fit: unset;
 }
 
 body.dir-scroll .scroll-section .step-badge {
@@ -923,7 +937,8 @@ body.dir-scroll .swipe-progress {
 body.dir-scroll .scroll-section-cta {
   position: relative;
   z-index: 5;
-  margin-top: 18px;
+  display: block;
+  margin: 18px auto;
   padding: 14px 38px;
   background: var(--cta-primary, #06C755);
   color: #fff;

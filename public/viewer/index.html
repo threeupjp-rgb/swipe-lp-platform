@@ -308,21 +308,15 @@ function fireConversion(pixels, opts = {}) {
       const bg = document.createElement('div');
       bg.className = 'step-bg';
       if (step.image) {
-        // 画像あり: セクションは 100svh 固定のまま (CLS防止・ジャンプ回避)
-        // 画像は object-fit: contain でアスペクト比保持しつつ全体を表示 (トリミングなし・余白は黒背景)
-        bg.style.position = 'absolute';
-        bg.style.inset = '0';
+        // 画像あり: セクション高さは画像のアスペクト比に従う (.has-image)
+        // 100svh固定+contain だと画面比との差分が黒帯になりセクション間に隙間が出るため
+        section.classList.add('has-image');
         const img = document.createElement('img');
         img.className = 'step-image';
         img.src = step.image;
         img.alt = step.title || `Section ${i + 1}`;
         img.loading = i <= 1 ? 'eager' : 'lazy';
         img.draggable = false;
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'contain';
-        img.style.objectPosition = 'center center';
-        img.style.display = 'block';
         bg.appendChild(img);
       } else if (step.bgGradient) {
         // 画像なし: bgGradient を絶対配置で全体に (min-height 100svh のデフォルト継承)
