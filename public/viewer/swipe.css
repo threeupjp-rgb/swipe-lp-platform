@@ -839,12 +839,9 @@ body.dir-scroll .scroll-section img.step-image {
   transform: translateZ(0);
 }
 
-/* 最終セクション: padding は section レベルに設置する。
-   step-content (flex子) に padding-bottom を入れると flex の justify-content:center で
-   コンテンツが中央配置時に上方向へ押し上げられ、セクション上部に白帯が発生するため避ける */
-body.dir-scroll .scroll-section:last-child {
-  padding-bottom: calc(88px + env(safe-area-inset-bottom));
-}
+/* 最終セクション下のCTAスペースは JS 側で制御する:
+   scroll_bg_color 指定時のみ body に padding-bottom (88px+safe-area) を付けて色帯を出す。
+   未指定時は余白ゼロで sticky CTA が最終画像に重なる (黒帯を出さない) */
 
 body.dir-scroll .scroll-section .step-bg {
   position: absolute;
