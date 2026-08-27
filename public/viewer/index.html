@@ -288,8 +288,10 @@ function fireConversion(pixels, opts = {}) {
 
   // scroll モード: 色指定があるときだけ CTA下に色付きスペース(88px)を出す
   // 未指定なら padding 0 で詰める (デフォルト = スペース無し)
-  if (isScroll && lp.scroll_bg_color) {
-    document.documentElement.style.backgroundColor = lp.scroll_bg_color;
+  // 黒 (#000000等) は旧ダッシュボードが空欄でも自動保存していた値のため「指定なし」扱いにする
+  const scrollBg = (lp.scroll_bg_color || '').trim();
+  if (isScroll && scrollBg && !/^(#0{3}|#0{6}|black)$/i.test(scrollBg)) {
+    document.documentElement.style.backgroundColor = scrollBg;
     document.body.style.paddingBottom = 'calc(88px + env(safe-area-inset-bottom))';
   }
 

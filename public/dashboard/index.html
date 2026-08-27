@@ -284,7 +284,7 @@
         <div class="form-row" id="createScrollBgRow" style="display:none;">
           <label>スクロール型 CTA下の背景色 <small style="color:var(--text-muted);font-size:11px;">(指定すると最終セクションとCTAの間に色帯を出す。空欄=帯なしでCTAが画像下部に重なる)</small></label>
           <div style="display:flex;gap:8px;align-items:center;">
-            <input type="color" id="createScrollBgColor" value="#000000" style="width:48px;height:36px;padding:2px;cursor:pointer;">
+            <input type="color" id="createScrollBgColor" value="#000000" style="width:48px;height:36px;padding:2px;cursor:pointer;" oninput="document.getElementById('createScrollBgColorText').value = this.value">
             <input type="text" id="createScrollBgColorText" placeholder="#000000 (空欄でデフォルト黒)" style="flex:1;" oninput="document.getElementById('createScrollBgColor').value = this.value || '#000000'">
             <button type="button" class="btn btn-ghost" style="padding:6px 10px;font-size:11px;" onclick="document.getElementById('createScrollBgColor').value='#000000';document.getElementById('createScrollBgColorText').value=''">クリア</button>
           </div>
@@ -551,7 +551,7 @@
         <div class="form-row" id="editScrollBgRow" style="display:none;">
           <label>スクロール型 CTA下の背景色 <small style="color:var(--text-muted);font-size:11px;">(指定すると最終セクションとCTAの間に色帯を出す。空欄=帯なしでCTAが画像下部に重なる)</small></label>
           <div style="display:flex;gap:8px;align-items:center;">
-            <input type="color" id="editScrollBgColor" value="#000000" style="width:48px;height:36px;padding:2px;cursor:pointer;">
+            <input type="color" id="editScrollBgColor" value="#000000" style="width:48px;height:36px;padding:2px;cursor:pointer;" oninput="document.getElementById('editScrollBgColorText').value = this.value">
             <input type="text" id="editScrollBgColorText" placeholder="#000000 (空欄でデフォルト黒)" style="flex:1;" oninput="document.getElementById('editScrollBgColor').value = this.value || '#000000'">
             <button type="button" class="btn btn-ghost" style="padding:6px 10px;font-size:11px;" onclick="document.getElementById('editScrollBgColor').value='#000000';document.getElementById('editScrollBgColorText').value=''">クリア</button>
           </div>

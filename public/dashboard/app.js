@@ -901,7 +901,8 @@ async function submitCreateLP() {
         form_success_cta_text: document.getElementById('createFormSuccessCtaText').value.trim() || null,
         form_success_cta_url: document.getElementById('createFormSuccessCtaUrl').value.trim() || null,
         form_multistep: document.getElementById('createFormMultistep').checked,
-        scroll_bg_color: (document.getElementById('createScrollBgColorText').value.trim() || document.getElementById('createScrollBgColor').value || '').trim() || null,
+        // テキスト欄のみを正とする (input[type=color]は常に値を持つため、フォールバックにすると空欄でも#000000が保存されてしまう)
+        scroll_bg_color: document.getElementById('createScrollBgColorText').value.trim() || null,
         form_name_label: document.getElementById('createFormNameLabel').value.trim() || null,
         form_name_placeholder: document.getElementById('createFormNamePlaceholder').value.trim() || null,
         form_phone_required: document.getElementById('createFormPhoneRequired').checked,
@@ -978,6 +979,12 @@ async function openEditLP() {
   document.getElementById('editFormSuccessCtaText').value = editLpData.form_success_cta_text || '';
   document.getElementById('editFormSuccessCtaUrl').value = editLpData.form_success_cta_url || '';
   document.getElementById('editFormMultistep').checked = editLpData.form_multistep === 1;
+
+  // スクロール型 CTA下の背景色 (保存済みの値を表示。#000000は旧バグで自動保存された値なので空欄扱い)
+  const savedScrollBg = (editLpData.scroll_bg_color || '').trim();
+  const scrollBgText = /^(#0{3}|#0{6}|black)$/i.test(savedScrollBg) ? '' : savedScrollBg;
+  document.getElementById('editScrollBgColorText').value = scrollBgText;
+  document.getElementById('editScrollBgColor').value = scrollBgText || '#000000';
 
   // フォーム項目のラベル・必須設定
   document.getElementById('editFormNameLabel').value = editLpData.form_name_label || '';
@@ -1208,7 +1215,7 @@ async function submitEditLP() {
         form_success_cta_text: document.getElementById('editFormSuccessCtaText').value.trim() || null,
         form_success_cta_url: document.getElementById('editFormSuccessCtaUrl').value.trim() || null,
         form_multistep: document.getElementById('editFormMultistep').checked,
-        scroll_bg_color: (document.getElementById('editScrollBgColorText').value.trim() || document.getElementById('editScrollBgColor').value || '').trim() || null,
+        scroll_bg_color: document.getElementById('editScrollBgColorText').value.trim() || null,
         form_name_label: document.getElementById('editFormNameLabel').value.trim() || null,
         form_name_placeholder: document.getElementById('editFormNamePlaceholder').value.trim() || null,
         form_phone_required: document.getElementById('editFormPhoneRequired').checked,
