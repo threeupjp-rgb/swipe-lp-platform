@@ -162,6 +162,95 @@ class AnalyticsService {
     return { steps };
   }
 
+  // スクロール深度分析 (scroll モードLP用)
+  // %換算はセッション中に観測された最大ページ高で行う (画像lazy-loadで高さが後から伸びるため)
+  getScrollDepth(lpId, from, to) {
+    const BAND = 5; // 5%刻み
+    const edf = this._eventDateFilter(from, to);
+
+    const sessionRows = this.db.prepare(`
+      SELECT e.session_id,
+        MAX(CAST(json_extract(e.data, '$.depth_px') AS REAL)) AS max_depth_px,
+        MAX(CAST(json_extract(e.data, '$.page_height') AS REAL)) AS page_height
+      FROM events e
+      WHERE e.lp_id = ? AND e.event_type = 'scroll_depth'${edf.sql}
+      GROUP BY e.session_id
+    `).all(lpId, ...edf.params);
+
+    const heightBySession = {};
+    const depths = [];
+    for (const s of sessionRows) {
+      if (!s.page_height || s.page_height <= 0) continue;
+      heightBySession[s.session_id] = s.page_height;
+      depths.push(Math.min(100, s.max_depth_px / s.page_height * 100));
+    }
+    const totalSessions = depths.length;
+
+    // 到達率カーブ: その深さまでビューポート下端が届いたセッションの割合
+    const reach = [];
+    for (let b = 0; b <= 100; b += BAND) {
+      const count = depths.filter(d => d >= b).length;
+      reach.push({
+        pct: b,
+        sessions: count,
+        rate: totalSessions > 0 ? Math.round(count / totalSessions * 1000) / 10 : 0
+      });
+    }
+
+    // 離脱分布 (セッション最大到達深度)。99.5%以上は完読扱い
+    const readComplete = depths.filter(d => d >= 99.5).length;
+    const exitHistogram = [];
+    for (let b = 0; b < 100; b += 10) {
+      exitHistogram.push({
+        label: `${b}〜${b + 10}%`,
+        sessions: depths.filter(d => d >= b && d < b + 10 && d < 99.5).length
+      });
+    }
+    exitHistogram.push({ label: '完読', sessions: readComplete });
+
+    const sorted = [...depths].sort((a, b) => a - b);
+    const avgMaxDepth = totalSessions > 0 ? depths.reduce((a, b) => a + b, 0) / totalSessions : 0;
+    const medianMaxDepth = totalSessions > 0
+      ? (totalSessions % 2 === 1
+          ? sorted[(totalSessions - 1) / 2]
+          : (sorted[totalSessions / 2 - 1] + sorted[totalSessions / 2]) / 2)
+      : 0;
+
+    // アテンション (深度帯ごとの合計滞在時間)。pxバケットを各セッションの最終ページ高で%帯へ変換
+    const bandCount = 100 / BAND;
+    const attentionMs = new Array(bandCount).fill(0);
+    const dwellRows = this.db.prepare(`
+      SELECT e.session_id, e.data
+      FROM events e
+      WHERE e.lp_id = ? AND e.event_type = 'scroll_dwell'${edf.sql}
+    `).all(lpId, ...edf.params);
+
+    for (const row of dwellRows) {
+      let d;
+      try { d = JSON.parse(row.data); } catch { continue; }
+      const ph = heightBySession[row.session_id] || d.page_height;
+      if (!ph || ph <= 0 || !d.buckets) continue;
+      for (const [pxStr, ms] of Object.entries(d.buckets)) {
+        const px = parseInt(pxStr, 10);
+        if (!Number.isFinite(px) || px < 0) continue;
+        const idx = Math.min(bandCount - 1, Math.floor(px / ph * bandCount));
+        attentionMs[idx] += Number(ms) || 0;
+      }
+    }
+    const attention = attentionMs.map((ms, i) => ({ pct: i * BAND, ms: Math.round(ms) }));
+
+    return {
+      totalSessions,
+      band: BAND,
+      reach,
+      exitHistogram,
+      attention,
+      avgMaxDepth: Math.round(avgMaxDepth * 10) / 10,
+      medianMaxDepth: Math.round(medianMaxDepth * 10) / 10,
+      readCompleteRate: totalSessions > 0 ? Math.round(readComplete / totalSessions * 1000) / 10 : 0
+    };
+  }
+
   getFunnel(lpId, from, to) {
     const edf = this._eventDateFilter(from, to);
     const stepViews = this.db.prepare(`

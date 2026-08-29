@@ -228,6 +228,13 @@ router.get('/analytics/:lpId/dwell-heatmap', (req, res) => {
   res.json(svc.getDwellHeatmap(req.params.lpId, from, to));
 });
 
+// スクロール深度 (scroll モードLP用)
+router.get('/analytics/:lpId/scroll-depth', (req, res) => {
+  const svc = new AnalyticsService(req.db);
+  const { from, to } = dateParams(req.query);
+  res.json(svc.getScrollDepth(req.params.lpId, from, to));
+});
+
 // ファネル
 router.get('/analytics/:lpId/funnel', (req, res) => {
   const svc = new AnalyticsService(req.db);
@@ -493,6 +500,36 @@ router.post('/admin/check-alerts', async (req, res) => {
   } catch (e) {
     console.error('check-alerts error:', e);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// 手動バックアップ実行 (DBスナップショット + uploads差分同期)
+router.post('/admin/backup', async (req, res) => {
+  try {
+    const { runBackup } = require('../services/backup');
+    if (!process.env.BACKUP_URL || !process.env.BACKUP_TOKEN) {
+      return res.status(400).json({ ok: false, error: 'BACKUP_URL / BACKUP_TOKEN 未設定' });
+    }
+    const result = await runBackup(req.db, process.env, { uploadDir: req.uploadDir });
+    res.json(result);
+  } catch (e) {
+    console.error('backup error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// バックアップ一覧 (R2上のDBスナップショット)
+router.get('/admin/backups', async (req, res) => {
+  try {
+    if (!process.env.BACKUP_URL || !process.env.BACKUP_TOKEN) {
+      return res.status(400).json({ error: 'BACKUP_URL / BACKUP_TOKEN 未設定' });
+    }
+    const r = await fetch(`${process.env.BACKUP_URL}/list?prefix=db/`, {
+      headers: { 'Authorization': `Bearer ${process.env.BACKUP_TOKEN}` },
+    });
+    res.json(await r.json());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

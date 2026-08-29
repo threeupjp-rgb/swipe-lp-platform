@@ -622,6 +622,180 @@ html, body {
   background: rgba(255,255,255,0.1);
 }
 
+/* スクロール到達ヒートマップ (scroll モードLP) */
+.scroll-depth-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.scroll-mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.scroll-mode-btn:hover { color: var(--text); }
+.scroll-mode-btn.active { background: var(--primary); color: #fff; }
+
+.scroll-depth-wrapper {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.scroll-depth-preview-outer {
+  flex: 0 0 280px;
+  max-height: 640px;
+  overflow-y: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+.scroll-depth-preview {
+  position: relative;
+  width: 100%;
+}
+
+.sd-step-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sd-step-block {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  background: var(--bg-card-elev);
+}
+
+.sd-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sd-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.sd-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.55);
+}
+
+.sd-gridlabel {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.scroll-depth-side {
+  flex: 1;
+  min-width: 0;
+}
+
+.scroll-depth-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.sd-stat {
+  background: var(--bg-card-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.sd-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.sd-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.scroll-depth-exit h4 {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.sd-exit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.sd-exit-label {
+  flex: 0 0 64px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.sd-exit-track {
+  flex: 1;
+  height: 14px;
+  background: var(--bg-card-elev);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sd-exit-bar {
+  height: 100%;
+  background: var(--danger);
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.sd-exit-bar.complete { background: var(--success); }
+
+.sd-exit-count {
+  flex: 0 0 90px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.scroll-depth-note {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .scroll-depth-wrapper { flex-direction: column; }
+  .scroll-depth-preview-outer { flex: none; width: 100%; max-width: 320px; margin: 0 auto; }
+}
+
 /* ファネル */
 .funnel {
   display: flex;

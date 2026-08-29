@@ -490,6 +490,12 @@ async function loadSteps() {
 // ヒートマップタブ
 async function loadHeatmap(stepIndex = 0) {
   const dq = getDateQuery();
+
+  // scroll モードLPならスクロール到達ヒートマップも表示
+  const isScrollLp = currentLpConfig?.direction === 'scroll';
+  document.getElementById('scrollDepthCard').style.display = isScrollLp ? '' : 'none';
+  if (isScrollLp) loadScrollDepth();
+
   // ステップ選択リスト構築
   const stepsRes = await fetch(`${API}/api/analytics/${currentLpId}/steps?_=1${dq}`);
   const stepsData = await stepsRes.json();
@@ -535,6 +541,125 @@ async function loadHeatmap(stepIndex = 0) {
   heatmapRenderer.render(heatData.clicks, stepImageUrl ? '__transparent__' : bgGradient);
 
   document.getElementById('heatmapTotalClicks').textContent = `総クリック数: ${heatData.totalClicks}`;
+}
+
+// ===== スクロール到達ヒートマップ (scroll モードLP) =====
+let scrollDepthData = null;
+let scrollDepthMode = 'reach'; // 'reach' | 'attention'
+let scrollDepthToggleBound = false;
+
+function setupScrollDepthToggle() {
+  if (scrollDepthToggleBound) return;
+  scrollDepthToggleBound = true;
+  document.querySelectorAll('.scroll-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.scroll-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      scrollDepthMode = btn.dataset.mode;
+      if (scrollDepthData) renderScrollDepth();
+    });
+  });
+}
+
+async function loadScrollDepth() {
+  setupScrollDepthToggle();
+  const dq = getDateQuery();
+  const res = await fetch(`${API}/api/analytics/${currentLpId}/scroll-depth?_=1${dq}`);
+  scrollDepthData = await res.json();
+  renderScrollDepth();
+}
+
+// 値(0-100)をヒートカラーに変換 (青=低 → 赤=高)
+function scrollHeatColor(value, alpha = 0.5) {
+  const hue = 240 - Math.max(0, Math.min(100, value)) / 100 * 240;
+  return `hsla(${hue}, 90%, 50%, ${alpha})`;
+}
+
+function renderScrollDepth() {
+  const d = scrollDepthData;
+  if (!d) return;
+
+  document.getElementById('scrollDepthSubtitle').textContent =
+    `計測セッション: ${d.totalSessions.toLocaleString()}`;
+
+  // --- 統計カード ---
+  const statsEl = document.getElementById('scrollDepthStats');
+  statsEl.innerHTML = `
+    <div class="sd-stat"><div class="sd-stat-label">平均到達深度</div><div class="sd-stat-value">${d.avgMaxDepth}%</div></div>
+    <div class="sd-stat"><div class="sd-stat-label">中央値</div><div class="sd-stat-value">${d.medianMaxDepth}%</div></div>
+    <div class="sd-stat"><div class="sd-stat-label">完読率</div><div class="sd-stat-value">${d.readCompleteRate}%</div></div>
+  `;
+
+  // --- LPプレビュー (セクション画像を縦積み) + ヒートオーバーレイ ---
+  const preview = document.getElementById('scrollDepthPreview');
+  preview.innerHTML = '';
+
+  const steps = currentLpConfig?.steps || [];
+  steps.forEach(step => {
+    if (step.image) {
+      const img = document.createElement('img');
+      img.src = step.image;
+      img.className = 'sd-step-img';
+      img.alt = '';
+      preview.appendChild(img);
+    } else {
+      const div = document.createElement('div');
+      div.className = 'sd-step-block';
+      if (step.bgGradient) div.style.background = step.bgGradient;
+      preview.appendChild(div);
+    }
+  });
+
+  // アテンションは合計msを最大値で正規化して0-100に
+  const maxAttention = Math.max(1, ...d.attention.map(a => a.ms));
+  const bandValues = (scrollDepthMode === 'reach')
+    ? d.reach.filter(r => r.pct < 100).map(r => ({
+        pct: r.pct,
+        colorValue: r.rate,
+        tip: `深度 ${r.pct}〜${r.pct + d.band}%: 到達率 ${r.rate}% (${r.sessions}人)`
+      }))
+    : d.attention.map(a => ({
+        pct: a.pct,
+        colorValue: a.ms / maxAttention * 100,
+        tip: `深度 ${a.pct}〜${a.pct + d.band}%: 合計滞在 ${(a.ms / 1000).toFixed(1)}秒`
+      }));
+
+  const overlay = document.createElement('div');
+  overlay.className = 'sd-overlay';
+  bandValues.forEach(b => {
+    const band = document.createElement('div');
+    band.className = 'sd-band';
+    band.style.top = `${b.pct}%`;
+    band.style.height = `${d.band}%`;
+    band.style.background = scrollHeatColor(b.colorValue);
+    band.title = b.tip;
+    overlay.appendChild(band);
+  });
+
+  // 10%刻みの深度目盛り + 到達率ラベル
+  for (let pct = 10; pct < 100; pct += 10) {
+    const line = document.createElement('div');
+    line.className = 'sd-gridline';
+    line.style.top = `${pct}%`;
+    const reachAt = d.reach.find(r => r.pct === pct);
+    line.innerHTML = `<span class="sd-gridlabel">${pct}%${scrollDepthMode === 'reach' && reachAt ? ` ｜ 到達 ${reachAt.rate}%` : ''}</span>`;
+    overlay.appendChild(line);
+  }
+  preview.appendChild(overlay);
+
+  // --- 離脱ポイント分布 ---
+  const exitEl = document.getElementById('scrollExitChart');
+  const maxExit = Math.max(1, ...d.exitHistogram.map(e => e.sessions));
+  exitEl.innerHTML = d.exitHistogram.map(e => {
+    const rate = d.totalSessions > 0 ? Math.round(e.sessions / d.totalSessions * 1000) / 10 : 0;
+    return `
+      <div class="sd-exit-row">
+        <span class="sd-exit-label">${e.label}</span>
+        <div class="sd-exit-track"><div class="sd-exit-bar${e.label === '完読' ? ' complete' : ''}" style="width:${e.sessions / maxExit * 100}%"></div></div>
+        <span class="sd-exit-count">${e.sessions}人 (${rate}%)</span>
+      </div>
+    `;
+  }).join('');
 }
 
 // ファネルタブ

@@ -154,6 +154,34 @@
 
   <!-- === ヒートマップタブ === -->
   <div class="tab-content" id="tab-heatmap">
+
+    <!-- スクロール到達ヒートマップ (scroll モードLPのみ表示) -->
+    <div class="card" id="scrollDepthCard" style="display:none;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">スクロール到達ヒートマップ</div>
+          <div class="card-subtitle" id="scrollDepthSubtitle">計測セッション: -</div>
+        </div>
+        <div class="scroll-depth-toggle">
+          <button class="scroll-mode-btn active" data-mode="reach">到達率</button>
+          <button class="scroll-mode-btn" data-mode="attention">滞在時間</button>
+        </div>
+      </div>
+      <div class="scroll-depth-wrapper">
+        <div class="scroll-depth-preview-outer">
+          <div class="scroll-depth-preview" id="scrollDepthPreview"></div>
+        </div>
+        <div class="scroll-depth-side">
+          <div class="scroll-depth-stats" id="scrollDepthStats"></div>
+          <div class="scroll-depth-exit">
+            <h4>離脱ポイント分布 (最大到達深度)</h4>
+            <div id="scrollExitChart"></div>
+          </div>
+          <p class="scroll-depth-note">※ 左のプレビューは各セクション画像を縦に並べた近似表示です。深度%が実測値です。</p>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">
         <div>

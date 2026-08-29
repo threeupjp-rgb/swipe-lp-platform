@@ -520,6 +520,7 @@ function fireConversion(pixels, opts = {}) {
   // トラッカー初期化
   const tracker = new SwipeLPTracker(lp.id);
   await tracker.startSession();
+  if (isScroll) tracker.initScrollTracking();
 
   // ===== 残りステップカウントダウン (scroll モードでは完全に無効化) =====
   const remainEl = document.getElementById('stepRemaining');

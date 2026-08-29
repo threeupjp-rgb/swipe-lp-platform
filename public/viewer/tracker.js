@@ -98,6 +98,83 @@ class SwipeLPTracker {
     this._currentStep = toStep;
   }
 
+  // ===== スクロール深度計測 (scroll モード専用) =====
+  // 注意: 画像の lazy-load でページ高が後から伸びるため、%はここでは確定させない。
+  // px深度と計測時点のページ高を送り、サーバー側でセッション最終ページ高から%換算する。
+  initScrollTracking() {
+    this._scroll = {
+      maxDepthPx: 0,
+      lastSentDepthPx: 0,
+      dwellBuckets: {},   // バケット先頭px -> 滞在ms (未送信分)
+      bucketSize: 200,
+      lastTick: Date.now(),
+      timer: null
+    };
+
+    const measure = () => {
+      const depth = (window.scrollY || document.documentElement.scrollTop || 0) + window.innerHeight;
+      if (depth > this._scroll.maxDepthPx) this._scroll.maxDepthPx = depth;
+    };
+
+    let rafPending = false;
+    this._bound.scroll = () => {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => { rafPending = false; measure(); });
+    };
+    window.addEventListener('scroll', this._bound.scroll, { passive: true });
+    measure();
+
+    // 1秒ごとに画面内のpxバケットへ滞在時間を配分 (アテンションマップ用)
+    this._scroll.timer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - this._scroll.lastTick;
+      this._scroll.lastTick = now;
+      // バックグラウンド放置分は滞在時間に含めない
+      if (document.visibilityState !== 'visible' || elapsed <= 0 || elapsed > 5000) return;
+      const top = window.scrollY || document.documentElement.scrollTop || 0;
+      const bottom = top + window.innerHeight;
+      const bs = this._scroll.bucketSize;
+      for (let b = Math.floor(top / bs) * bs; b < bottom; b += bs) {
+        const overlap = Math.min(bottom, b + bs) - Math.max(top, b);
+        this._scroll.dwellBuckets[b] = (this._scroll.dwellBuckets[b] || 0) + Math.round(elapsed * overlap / (bottom - top));
+      }
+      measure();
+    }, 1000);
+  }
+
+  // flush/beacon の直前に呼ばれ、未送信のスクロール深度・滞在分をバッファへ積む
+  // (_addEvent 経由だと batchSize 到達で flush が再帰するため直接 push する)
+  _emitScrollEvents() {
+    if (!this._scroll) return;
+    const pageHeight = document.documentElement.scrollHeight;
+
+    if (this._scroll.maxDepthPx > this._scroll.lastSentDepthPx) {
+      this._scroll.lastSentDepthPx = this._scroll.maxDepthPx;
+      this.buffer.push({
+        type: 'scroll_depth',
+        stepIndex: null,
+        data: {
+          depth_px: Math.round(this._scroll.maxDepthPx),
+          page_height: pageHeight,
+          viewport_height: window.innerHeight
+        },
+        timestamp: Date.now()
+      });
+    }
+
+    const buckets = this._scroll.dwellBuckets;
+    if (Object.keys(buckets).length > 0) {
+      this._scroll.dwellBuckets = {};
+      this.buffer.push({
+        type: 'scroll_dwell',
+        stepIndex: null,
+        data: { page_height: pageHeight, bucket_px: this._scroll.bucketSize, buckets },
+        timestamp: Date.now()
+      });
+    }
+  }
+
   _startDwell(stepIndex) {
     this._dwellStart = Date.now();
     this._currentStep = stepIndex;
@@ -126,6 +203,7 @@ class SwipeLPTracker {
   }
 
   async flush() {
+    this._emitScrollEvents();
     if (this.buffer.length === 0) return;
     const events = [...this.buffer];
     this.buffer = [];
@@ -147,6 +225,7 @@ class SwipeLPTracker {
   }
 
   _sendBeacon() {
+    this._emitScrollEvents();
     if (this.buffer.length === 0) return;
     const payload = JSON.stringify({
       sessionId: this.sessionId,
@@ -167,6 +246,8 @@ class SwipeLPTracker {
 
   destroy() {
     if (this._flushTimer) clearInterval(this._flushTimer);
+    if (this._scroll && this._scroll.timer) clearInterval(this._scroll.timer);
+    if (this._bound.scroll) window.removeEventListener('scroll', this._bound.scroll);
     document.removeEventListener('visibilitychange', this._bound.visChange);
     window.removeEventListener('pagehide', this._bound.pageHide);
     this._recordDwell();
