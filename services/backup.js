@@ -48,9 +48,22 @@ async function backupDatabase(db, env) {
   }
 }
 
+// リトライ付きPUT (逐次大量アップロードでは一時エラーがほぼ必発のため)
+async function putWithRetry(env, key, body, attempts = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      return await workerFetch(env, `/upload?key=${encodeURIComponent(key)}`, { method: 'PUT', body });
+    } catch (e) {
+      if (i >= attempts) throw e;
+      await new Promise(r => setTimeout(r, i * 1500));
+    }
+  }
+}
+
 // uploads差分同期: R2に無いファイルだけアップロード (画像はimmutableなので差分で十分)
+// 1件の失敗で全体を止めない (失敗分は翌日の差分同期で自動リカバリ)
 async function syncUploads(uploadDir, env) {
-  if (!fs.existsSync(uploadDir)) return { total: 0, synced: 0 };
+  if (!fs.existsSync(uploadDir)) return { total: 0, synced: 0, failed: 0 };
 
   const local = fs.readdirSync(uploadDir).filter(f => {
     try { return fs.statSync(path.join(uploadDir, f)).isFile(); } catch { return false; }
@@ -58,16 +71,30 @@ async function syncUploads(uploadDir, env) {
 
   const listRes = await workerFetch(env, '/list?prefix=uploads/');
   const remote = new Set((await listRes.json()).objects.map(o => o.key));
+  const pending = local.filter(f => !remote.has(`uploads/${f}`));
 
   let synced = 0;
-  for (const file of local) {
-    const key = `uploads/${file}`;
-    if (remote.has(key)) continue;
-    const body = fs.readFileSync(path.join(uploadDir, file));
-    await workerFetch(env, `/upload?key=${encodeURIComponent(key)}`, { method: 'PUT', body });
-    synced++;
-  }
-  return { total: local.length, synced };
+  const failed = [];
+  let idx = 0;
+  const CONCURRENCY = 4;
+
+  const worker = async () => {
+    while (idx < pending.length) {
+      const file = pending[idx++];
+      try {
+        const body = fs.readFileSync(path.join(uploadDir, file));
+        await putWithRetry(env, `uploads/${file}`, body);
+        synced++;
+        if (synced % 50 === 0) console.log(`[BACKUP] uploads sync: ${synced}/${pending.length}`);
+      } catch (e) {
+        failed.push(file);
+        console.error(`[BACKUP] upload failed (${file}): ${e.message}`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) || 1 }, worker));
+
+  return { total: local.length, synced, failed: failed.length };
 }
 
 async function runBackup(db, env, opts = {}) {
@@ -82,7 +109,13 @@ async function runBackup(db, env, opts = {}) {
     uploads: upResult,
     durationMs: Date.now() - started,
   };
-  console.log(`[BACKUP] done: ${dbResult.key} (${Math.round(dbResult.bytes / 1024)}KB), uploads ${upResult.synced}/${upResult.total} synced, pruned ${dbResult.pruned.length}`);
+  console.log(`[BACKUP] done: ${dbResult.key} (${Math.round(dbResult.bytes / 1024)}KB), uploads ${upResult.synced}/${upResult.total} synced (${upResult.failed || 0} failed), pruned ${dbResult.pruned.length}`);
+  // 大量失敗は系統的な問題 (少数の一時失敗は翌日の差分同期で自動リカバリされるため通知しない)
+  if ((upResult.failed || 0) > 50) {
+    try {
+      await sendAlert(env, `⚠️ SwipeLP uploads同期で${upResult.failed}件失敗 (${upResult.synced}件成功)\n→ Renderログ確認`);
+    } catch {}
+  }
   return result;
 }
 
