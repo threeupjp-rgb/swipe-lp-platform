@@ -158,6 +158,7 @@ function basicAuth(req, res, next) {
 // DBをリクエストに注入
 app.use((req, res, next) => {
   req.db = db;
+  req.uploadDir = uploadDir;
   next();
 });
 
@@ -250,4 +251,8 @@ app.listen(PORT, () => {
   console.log(`SwipeLP Platform running at http://localhost:${PORT}`);
   console.log(`  Dashboard: http://localhost:${PORT}/dashboard/`);
   console.log(`  Demo LP:   http://localhost:${PORT}/lp/demo-lp-1`);
+
+  // 自動バックアップ (毎日04:00 JST、BACKUP_URL/BACKUP_TOKEN 設定時のみ)
+  const { scheduleBackup } = require('./services/backup');
+  scheduleBackup(db, process.env, uploadDir);
 });
