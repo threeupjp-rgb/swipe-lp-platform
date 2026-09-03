@@ -279,6 +279,13 @@ function fireConversion(pixels, opts = {}) {
   // ピクセル注入
   initPixels(lp.config.pixels || {});
 
+  // 初期背景色をLPテーマ色 (1枚目画像のサーバー計算済み平均色) に即設定
+  // 描画バグで一瞬余白が出ても黒ではなくLPの色調になる (scroll モードは独自のbg設定があるため除外)
+  if (lp.avg_color && (lp.config.direction || 'horizontal') !== 'scroll') {
+    document.documentElement.style.backgroundColor = lp.avg_color;
+    document.body.style.backgroundColor = lp.avg_color;
+  }
+
   // 方向設定
   const direction = lp.config.direction || 'horizontal';
   const isVertical = direction === 'vertical';
@@ -519,6 +526,23 @@ function fireConversion(pixels, opts = {}) {
       setTimeout(nudgeViewport, 1200);
       window.addEventListener('pageshow', nudgeViewport);
     }
+
+    // 「タッチすると直る」= タッチによるスクロール系の内部再計算がトリガー。
+    // 起動直後にそれを擬似再現する: 一瞬だけ2pxスクロール可能にして1px往復
+    const forceSettle = () => {
+      try {
+        const h = window.innerHeight;
+        const prev = document.body.style.height;
+        document.body.style.height = (h + 2) + 'px';
+        window.scrollTo(0, 1);
+        window.scrollTo(0, 0);
+        document.body.style.height = prev;
+      } catch (e) { /* silent */ }
+    };
+    setTimeout(forceSettle, 150);
+    setTimeout(forceSettle, 600);
+    setTimeout(forceSettle, 1500);
+    window.addEventListener('pageshow', () => setTimeout(forceSettle, 100));
 
     // 埋め草レイヤー (現在ステップの画像ぼかし拡大版)
     const bgFill = document.createElement('div');

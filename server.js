@@ -210,10 +210,28 @@ app.use('/api/line-report', lineReportRoutes);
 app.get('/report/line/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'report', 'line.html'));
 });
-app.get('/api/lp-by-slug/:slug', (req, res) => {
+// 1枚目画像の平均色をLPテーマ色として同梱 (viewer が初期背景色に使い、描画バグ時の黒帯を防ぐ)
+const avgColorCache = new Map();
+async function getAvgColor(imageUrl) {
+  if (!imageUrl || !imageUrl.startsWith('/uploads/')) return null;
+  if (avgColorCache.has(imageUrl)) return avgColorCache.get(imageUrl);
+  try {
+    const sharp = require('sharp');
+    const file = path.join(uploadDir, path.basename(imageUrl));
+    const { data } = await sharp(file).resize(1, 1, { fit: 'cover' }).raw().toBuffer({ resolveWithObject: true });
+    const col = `rgb(${data[0]},${data[1]},${data[2]})`;
+    avgColorCache.set(imageUrl, col);
+    return col;
+  } catch (e) {
+    return null;
+  }
+}
+
+app.get('/api/lp-by-slug/:slug', async (req, res) => {
   const lp = db.prepare('SELECT * FROM lps WHERE slug = ?').get(req.params.slug);
   if (!lp) return res.status(404).json({ error: 'LP not found' });
   lp.config = JSON.parse(lp.config);
+  lp.avg_color = await getAvgColor(lp.config.steps && lp.config.steps[0] && lp.config.steps[0].image);
   res.json(lp);
 });
 
