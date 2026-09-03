@@ -81,17 +81,21 @@ html.vv-locked,
 html.vv-locked body {
   height: var(--app-h);
   /* 描画クリップを解除: レイアウトビューポートがブラウザバー裏に置かれる端末で、
-     ページ枠より下の領域にも .bg-fill を描かせる (黒帯をぼかし画像で埋める) */
+     ページ枠より下の領域にも .bg-fill やステップ下端を描かせる */
   overflow: visible;
 }
+/* ステップは「JS計測値」と「CSSの100vh (バー非表示時の大きい方のビューポート)」の
+   大きい方で描画する。JS申告値が実際の表示領域より小さい端末 (Chrome iOS等) でも
+   下に余白が出ず、はみ出す分は下端がバー裏に隠れるだけで済む。
+   コンテナ・ステップは fixed 配置なので文書スクロールは発生しない */
 html.vv-locked .swipe-container {
-  height: var(--app-h);
+  height: max(var(--app-h), 100vh);
 }
 html.vv-locked .swipe-step {
-  height: var(--app-h);
+  height: max(var(--app-h), 100vh);
 }
 html.vv-locked .swipe-track-v .swipe-step {
-  flex: 0 0 var(--app-h);
+  flex: 0 0 max(var(--app-h), 100vh);
 }
 
 .swipe-step .step-bg {
