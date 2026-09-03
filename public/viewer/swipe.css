@@ -4,6 +4,8 @@
   padding: 0;
 }
 
+/* 初期描画は 100dvh。JS起動後は .vv-locked + --app-h で
+   visualViewport の実寸に固定される (下記参照) */
 html, body {
   width: 100%;
   height: 100%;
@@ -19,10 +21,14 @@ html, body {
 body.dir-horizontal { touch-action: pan-y; }
 body.dir-vertical { touch-action: pan-x; }
 
-/* スワイプコンテナ */
+/* スワイプコンテナ (inset:0 だと小さい方のビューポートに縮む端末があるため高さ明示) */
 .swipe-container {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   touch-action: none; /* ブラウザのジェスチャー処理を無効化、JSで全制御 */
 }
@@ -58,13 +64,38 @@ body.dir-vertical { touch-action: pan-x; }
   overflow: hidden;
 }
 
-/* 各ステップ — 縦モード: flex-basisをdvhに */
+/* 各ステップ — 縦モード */
 .swipe-track-v .swipe-step {
   flex: 0 0 100vh;
   flex: 0 0 100dvh;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
+}
+
+/* ===== ビューポート実寸ロック =====
+   100dvh/lvh はブラウザバー切替と食い違う端末があり、下に黒帯が出たり上が切れたりする。
+   JSが visualViewport の実寸を --app-h にセットし続け、常に「実際に見えている領域」に一致させる。
+   (スワイプモードのみ。scroll モードは通常スクロールなので対象外) */
+html.vv-locked,
+html.vv-locked body {
+  height: var(--app-h);
+  /* 描画クリップを解除: レイアウトビューポートがブラウザバー裏に置かれる端末で、
+     ページ枠より下の領域にも .bg-fill やステップ下端を描かせる */
+  overflow: visible;
+}
+/* ステップは「JS計測値」と「CSSの100vh (バー非表示時の大きい方のビューポート)」の
+   大きい方で描画する。JS申告値が実際の表示領域より小さい端末 (Chrome iOS等) でも
+   下に余白が出ず、はみ出す分は下端がバー裏に隠れるだけで済む。
+   コンテナ・ステップは fixed 配置なので文書スクロールは発生しない */
+html.vv-locked .swipe-container {
+  height: max(var(--app-h), 100vh);
+}
+html.vv-locked .swipe-step {
+  height: max(var(--app-h), 100vh);
+}
+html.vv-locked .swipe-track-v .swipe-step {
+  flex: 0 0 max(var(--app-h), 100vh);
 }
 
 .swipe-step .step-bg {
@@ -77,8 +108,28 @@ body.dir-vertical { touch-action: pan-x; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center center;
+  /* 上端固定: ビューポート高さの解釈が狂う端末でも冒頭 (ヘッドライン) は絶対に切れない。
+     縦方向のはみ出しは下側 (CTA・ツールバー裏) にのみ逃がす */
+  object-position: center top;
 }
+
+/* ステップ背後の埋め草レイヤー: 現在ステップ画像のぼかし拡大版。
+   端末のビューポート解釈がどう狂っても黒帯ではなく絵柄の続きが見える保険 */
+.bg-fill {
+  position: fixed;
+  top: -30vh;
+  left: -5vw;
+  width: 110vw;
+  height: 190vh; /* ビューポート解釈がどれだけ狂っても画面全域を覆う */
+  background: #000;
+  background-size: cover;
+  background-position: center top;
+  filter: blur(18px);
+  transform: scale(1.08);
+  z-index: 0;
+}
+.swipe-container { z-index: 1; }
+body.dir-scroll .bg-fill { display: none; }
 
 /* ステップコンテンツ（テキスト表示） */
 .step-content {
@@ -748,16 +799,22 @@ body.dir-vertical { touch-action: pan-x; }
   .swipe-container:hover .swipe-nav { opacity: 1; }
 }
 
-/* ローディング */
+/* ローディング (初回表示カーテン)
+   描画倍率が確定するまでの最初の~1秒を覆い隠す役割も兼ねるため、
+   ビューポート解釈がどう狂っても画面全域を覆う大きさにしている */
 .swipe-loading {
   position: fixed;
-  inset: 0;
+  top: -30vh;
+  left: -5vw;
+  width: 110vw;
+  height: 190vh;
+  padding-bottom: 50vh; /* スピナーを可視領域の中央付近へ */
   display: flex;
   align-items: center;
   justify-content: center;
   background: #1a1a2e;
   z-index: 200;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.35s ease;
 }
 
 .swipe-loading.hidden {

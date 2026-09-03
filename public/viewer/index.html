@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>SwipeLP</title>
   <link rel="stylesheet" href="/viewer/swipe.css">
 </head>
@@ -279,6 +279,27 @@ function fireConversion(pixels, opts = {}) {
   // ピクセル注入
   initPixels(lp.config.pixels || {});
 
+  // 初期背景色をLPテーマ色 (1枚目画像のサーバー計算済み平均色) に即設定
+  // 描画バグで一瞬余白が出ても黒ではなくLPの色調になる (scroll モードは独自のbg設定があるため除外)
+  if (lp.avg_color && (lp.config.direction || 'horizontal') !== 'scroll') {
+    document.documentElement.style.backgroundColor = lp.avg_color;
+    document.body.style.backgroundColor = lp.avg_color;
+    // ローディングカーテンもテーマ色に。明るい色ならスピナーを暗色に切替
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+      loadingEl.style.background = lp.avg_color;
+      const m = lp.avg_color.match(/rgb\((\d+),(\d+),(\d+)\)/);
+      if (m) {
+        const lum = 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3];
+        const sp = loadingEl.querySelector('.spinner');
+        if (sp && lum > 140) {
+          sp.style.borderColor = 'rgba(0,0,0,0.15)';
+          sp.style.borderTopColor = 'rgba(0,0,0,0.55)';
+        }
+      }
+    }
+  }
+
   // 方向設定
   const direction = lp.config.direction || 'horizontal';
   const isVertical = direction === 'vertical';
@@ -496,6 +517,154 @@ function fireConversion(pixels, opts = {}) {
   const engine = isScroll
     ? createScrollEngine(container, lp.config.steps)
     : (() => { const e = new SwipeEngine(container, { direction }); e.init(lp.config.steps); return e; })();
+
+  // ===== ビューポート実寸ロック (swipe モードのみ) =====
+  // 一部端末では 100dvh どころか innerHeight / visualViewport すら実際の表示領域とずれる。
+  // 対策3段構え:
+  //  1. 各種メトリクスの最小値を --app-h に採用 (ページを表示領域より大きくしない=ずれスクロール根絶)
+  //  2. イベント + 300msポーリングで常時補正 (イベントが発火しない端末対策)
+  //  3. ステップ背後に現在画像のぼかし版 (.bg-fill) を敷き、残ったズレも黒帯にしない
+  if (!isScroll) {
+    // 埋め草レイヤー (現在ステップの画像ぼかし拡大版)
+    const bgFill = document.createElement('div');
+    bgFill.className = 'bg-fill';
+    document.body.insertBefore(bgFill, document.body.firstChild);
+
+    // ルート背景を現在ステップ画像の平均色に (縮小描画バグ中の余白も黒ではなくLPの色調になる)
+    const setRootBgFromImage = (src) => {
+      try {
+        const im = new Image();
+        im.onload = () => {
+          try {
+            const cv = document.createElement('canvas');
+            cv.width = cv.height = 8;
+            const cx = cv.getContext('2d');
+            cx.drawImage(im, 0, 0, 8, 8);
+            const d = cx.getImageData(0, 0, 8, 8).data;
+            let r = 0, g = 0, b = 0;
+            for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+            const n = d.length / 4;
+            const col = `rgb(${r / n | 0},${g / n | 0},${b / n | 0})`;
+            document.documentElement.style.backgroundColor = col;
+            document.body.style.backgroundColor = col;
+          } catch (e) { /* canvas汚染等は黙殺 (黒のまま) */ }
+        };
+        im.src = src;
+      } catch (e) { /* silent */ }
+    };
+
+    const setBgFill = (idx) => {
+      const st = lp.config.steps[idx] || {};
+      if (st.image) {
+        bgFill.style.backgroundImage = `url("${st.image}")`;
+        setRootBgFromImage(st.image);
+      } else if (st.bgGradient) {
+        bgFill.style.backgroundImage = 'none';
+        bgFill.style.background = st.bgGradient;
+      }
+    };
+    setBgFill(0);
+    engine.on('stepChange', (d) => setBgFill(d.to));
+
+    let lastH = 0;
+    const lockViewport = () => {
+      const cands = [window.innerHeight, document.documentElement.clientHeight];
+      if (window.visualViewport && window.visualViewport.height) {
+        cands.push(window.visualViewport.height);
+      }
+      const valid = cands.filter(v => v && v > 300);
+      if (!valid.length) return;
+      const h = Math.round(Math.min.apply(null, valid));
+      if (h > 0 && h !== lastH) {
+        lastH = h;
+        document.documentElement.style.setProperty('--app-h', h + 'px');
+        document.documentElement.classList.add('vv-locked');
+        if (engine._onResize) engine._onResize(); // ステップ実測でスワイプ距離を再計算
+      }
+      // ずれスクロールを打ち消す (上切れ防止)
+      if (window.scrollY > 0 || document.documentElement.scrollTop > 0) window.scrollTo(0, 0);
+      // レイアウトビューポートがブラウザバー裏に置かれる端末 (Chrome iOS等) の補正:
+      // visualViewport.offsetTop が恒常的に >0 なら、その分だけ全体を下へずらして可視領域に合わせる
+      const vv = window.visualViewport;
+      const ot = (vv && (!vv.scale || Math.abs(vv.scale - 1) < 0.02)) ? Math.round(vv.offsetTop) : 0;
+      const want = (ot > 8 && window.scrollY === 0) ? `translateY(${ot}px)` : '';
+      if (document.body.style.transform !== want) document.body.style.transform = want;
+    };
+    lockViewport();
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', lockViewport);
+      window.visualViewport.addEventListener('scroll', lockViewport);
+    }
+    window.addEventListener('resize', lockViewport);
+    window.addEventListener('orientationchange', () => setTimeout(lockViewport, 150));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) lockViewport(); });
+    window.addEventListener('scroll', () => { if (window.scrollY > 0) window.scrollTo(0, 0); }, { passive: true });
+    setInterval(lockViewport, 300); // イベントが来ない端末への保険
+
+    // ===== 初回表示の描画バグ自己回復 =====
+    // 実機で「少しスワイプすると直る」ことを確認済み → スワイプと同じ描画経路
+    // (トラックのtransform更新) を起動直後に自動発生させ、描画の再コミット=自己回復を促す
+    let userTouched = false;
+    const markTouched = () => { userTouched = true; };
+    container.addEventListener('touchstart', markTouched, { once: true, passive: true });
+    container.addEventListener('mousedown', markTouched, { once: true });
+
+    // 1) 最初の3秒間、目に見えないサブピクセルの揺らぎで再コミットを継続的に誘発
+    const wiggleT0 = Date.now();
+    const wiggleTimer = setInterval(() => {
+      if (userTouched || Date.now() - wiggleT0 > 3000) {
+        if (!engine.state.isDragging) { engine.state.delta = 0; engine._updateTransform(false); }
+        clearInterval(wiggleTimer);
+        return;
+      }
+      if (engine.state.isDragging || engine.state.isAnimating) return;
+      engine.state.delta = engine.state.delta ? 0 : 0.4;
+      engine._updateTransform(false);
+    }, 280);
+
+    // 2) 0.9秒後に1回だけスワイプヒント: 次ページを少し見せて戻す
+    //    (実スワイプと同じ経路で描画を確定させる + スワイプ誘導の演出を兼ねる)
+    if (lp.config.steps.length > 1) {
+      setTimeout(() => {
+        if (userTouched || engine.getCurrentIndex() !== 0 || engine.state.isDragging) return;
+        engine.state.delta = -36;
+        engine._updateTransform(true);
+        setTimeout(() => {
+          engine.state.delta = 0;
+          engine._updateTransform(true);
+        }, 330);
+      }, 900);
+    }
+
+    // 実機診断モード: ?diag=1 でライブ数値をオーバーレイ表示 (スクショで原因特定用)
+    // ページ自体が上下にずれても読めるよう画面中央付近に出す
+    if (new URLSearchParams(location.search).get('diag') === '1') {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:35%;left:4px;z-index:9999;background:rgba(0,0,0,0.78);color:#0f0;font:11px/1.6 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre;';
+      document.body.appendChild(el);
+      // CSSの 100vh / 100dvh がこの端末で何pxに解決されるかの実測プローブ
+      const probeVh = document.createElement('div');
+      probeVh.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:100vh;';
+      const probeDvh = document.createElement('div');
+      probeDvh.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:100dvh;';
+      document.body.appendChild(probeVh);
+      document.body.appendChild(probeDvh);
+      setInterval(() => {
+        const vv = window.visualViewport;
+        const step = document.querySelector('.swipe-step');
+        const r = step ? step.getBoundingClientRect() : { top: 0, bottom: 0, height: 0 };
+        el.textContent =
+          'inner: ' + window.innerWidth + 'x' + window.innerHeight +
+          '\nclientH: ' + document.documentElement.clientHeight +
+          '\nvv: ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' ot:' + Math.round(vv.offsetTop) + ' pt:' + Math.round(vv.pageTop) + ' sc:' + (vv.scale || 1).toFixed(2) : 'none') +
+          '\n100vh: ' + probeVh.offsetHeight + ' / 100dvh: ' + probeDvh.offsetHeight +
+          '\nscrollY: ' + Math.round(window.scrollY) +
+          '\napp-h: ' + document.documentElement.style.getPropertyValue('--app-h') +
+          '\nstep: ' + Math.round(r.top) + '..' + Math.round(r.bottom) + ' (h' + Math.round(r.height) + ')' +
+          '\nscreen: ' + screen.width + 'x' + screen.height + ' dpr:' + devicePixelRatio;
+      }, 500);
+    }
+  }
 
   // インジケーター生成 (scroll モードではドット自体作らない)
   const indicators = document.getElementById('indicators');
@@ -923,7 +1092,7 @@ function fireConversion(pixels, opts = {}) {
     engine.next();
   });
 
-  // ローディング非表示
+  // ローディング非表示 (即時。広告LPなので人工的な遅延は入れない)
   document.getElementById('loading').classList.add('hidden');
   setTimeout(() => document.getElementById('loading').remove(), 300);
 })();

@@ -102,6 +102,10 @@ class SwipeEngine {
 
     this.container.appendChild(this.track);
 
+    // スワイプ距離はCSSで実際に描画されたステップサイズに合わせる
+    // (window.innerHeightはブラウザバーの状態次第でCSSのlvhとずれるため実測が正)
+    this._measure();
+
     // アンカーレイヤーを画像の描画領域に合わせる (レイアウト確定後)
     this._anchorLayers.forEach(({ layer, img, stepEl }) => {
       if (img.complete && img.naturalWidth) this._fitAnchorLayer(layer, img, stepEl);
@@ -148,7 +152,7 @@ class SwipeEngine {
   }
 
   // object-fit: cover で実際に表示されている画像領域とレイヤーを一致させる
-  // (アンカー座標は元画像に対する%のため)
+  // (アンカー座標は元画像に対する%のため。object-position: center top に合わせ縦は上端固定)
   _fitAnchorLayer(layer, img, stepEl) {
     const cw = stepEl.clientWidth, ch = stepEl.clientHeight;
     const nw = img.naturalWidth, nh = img.naturalHeight;
@@ -156,7 +160,7 @@ class SwipeEngine {
     const scale = Math.max(cw / nw, ch / nh);
     const w = nw * scale, h = nh * scale;
     layer.style.left = `${(cw - w) / 2}px`;
-    layer.style.top = `${(ch - h) / 2}px`;
+    layer.style.top = '0px';
     layer.style.width = `${w}px`;
     layer.style.height = `${h}px`;
   }
@@ -320,10 +324,18 @@ class SwipeEngine {
     }
   }
 
+  // 主軸方向のサイズを実際に描画されたステップ要素から取得
+  _measure() {
+    const stepEl = this.track && this.track.firstElementChild;
+    if (this.isVertical) {
+      this.state.containerSize = (stepEl && stepEl.offsetHeight) || window.innerHeight;
+    } else {
+      this.state.containerSize = this.container.offsetWidth;
+    }
+  }
+
   _onResize() {
-    this.state.containerSize = this.isVertical
-      ? window.innerHeight
-      : this.container.offsetWidth;
+    this._measure();
     this.state.delta = 0;
     this._updateTransform(false);
     this._anchorLayers.forEach(({ layer, img, stepEl }) => this._fitAnchorLayer(layer, img, stepEl));
