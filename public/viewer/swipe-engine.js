@@ -152,7 +152,7 @@ class SwipeEngine {
   }
 
   // object-fit: cover で実際に表示されている画像領域とレイヤーを一致させる
-  // (アンカー座標は元画像に対する%のため)
+  // (アンカー座標は元画像に対する%のため。object-position: center top に合わせ縦は上端固定)
   _fitAnchorLayer(layer, img, stepEl) {
     const cw = stepEl.clientWidth, ch = stepEl.clientHeight;
     const nw = img.naturalWidth, nh = img.naturalHeight;
@@ -160,7 +160,7 @@ class SwipeEngine {
     const scale = Math.max(cw / nw, ch / nh);
     const w = nw * scale, h = nh * scale;
     layer.style.left = `${(cw - w) / 2}px`;
-    layer.style.top = `${(ch - h) / 2}px`;
+    layer.style.top = '0px';
     layer.style.width = `${w}px`;
     layer.style.height = `${h}px`;
   }

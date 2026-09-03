@@ -101,8 +101,28 @@ html.vv-locked .swipe-track-v .swipe-step {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center center;
+  /* 上端固定: ビューポート高さの解釈が狂う端末でも冒頭 (ヘッドライン) は絶対に切れない。
+     縦方向のはみ出しは下側 (CTA・ツールバー裏) にのみ逃がす */
+  object-position: center top;
 }
+
+/* ステップ背後の埋め草レイヤー: 現在ステップ画像のぼかし拡大版。
+   端末のビューポート解釈がどう狂っても黒帯ではなく絵柄の続きが見える保険 */
+.bg-fill {
+  position: fixed;
+  top: -5vh;
+  left: -5vw;
+  width: 110vw;
+  height: 130vh;
+  background: #000;
+  background-size: cover;
+  background-position: center top;
+  filter: blur(18px);
+  transform: scale(1.08);
+  z-index: 0;
+}
+.swipe-container { z-index: 1; }
+body.dir-scroll .bg-fill { display: none; }
 
 /* ステップコンテンツ（テキスト表示） */
 .step-content {

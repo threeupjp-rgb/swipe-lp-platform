@@ -498,20 +498,44 @@ function fireConversion(pixels, opts = {}) {
     : (() => { const e = new SwipeEngine(container, { direction }); e.init(lp.config.steps); return e; })();
 
   // ===== ビューポート実寸ロック (swipe モードのみ) =====
-  // 一部端末で 100dvh とブラウザバーの表示状態が食い違い、下に黒帯・上切れが発生する。
-  // visualViewport の実寸を --app-h に反映し続け、ビューポートのずれスクロールも常に0へ戻す。
+  // 一部端末では 100dvh どころか innerHeight / visualViewport すら実際の表示領域とずれる。
+  // 対策3段構え:
+  //  1. 各種メトリクスの最小値を --app-h に採用 (ページを表示領域より大きくしない=ずれスクロール根絶)
+  //  2. イベント + 300msポーリングで常時補正 (イベントが発火しない端末対策)
+  //  3. ステップ背後に現在画像のぼかし版 (.bg-fill) を敷き、残ったズレも黒帯にしない
   if (!isScroll) {
+    // 埋め草レイヤー (現在ステップの画像ぼかし拡大版)
+    const bgFill = document.createElement('div');
+    bgFill.className = 'bg-fill';
+    document.body.insertBefore(bgFill, document.body.firstChild);
+    const setBgFill = (idx) => {
+      const st = lp.config.steps[idx] || {};
+      if (st.image) {
+        bgFill.style.backgroundImage = `url("${st.image}")`;
+      } else if (st.bgGradient) {
+        bgFill.style.backgroundImage = 'none';
+        bgFill.style.background = st.bgGradient;
+      }
+    };
+    setBgFill(0);
+    engine.on('stepChange', (d) => setBgFill(d.to));
+
     let lastH = 0;
     const lockViewport = () => {
-      const vv = window.visualViewport;
-      const h = Math.round((vv && vv.height) || window.innerHeight);
+      const cands = [window.innerHeight, document.documentElement.clientHeight];
+      if (window.visualViewport && window.visualViewport.height) {
+        cands.push(window.visualViewport.height);
+      }
+      const valid = cands.filter(v => v && v > 300);
+      if (!valid.length) return;
+      const h = Math.round(Math.min.apply(null, valid));
       if (h > 0 && h !== lastH) {
         lastH = h;
         document.documentElement.style.setProperty('--app-h', h + 'px');
         document.documentElement.classList.add('vv-locked');
         if (engine._onResize) engine._onResize(); // ステップ実測でスワイプ距離を再計算
       }
-      // レイアウトが表示領域よりずれてスクロールした状態を打ち消す (上切れ防止)
+      // ずれスクロールを打ち消す (上切れ防止)
       if (window.scrollY > 0 || document.documentElement.scrollTop > 0) window.scrollTo(0, 0);
     };
     lockViewport();
@@ -522,6 +546,28 @@ function fireConversion(pixels, opts = {}) {
     window.addEventListener('resize', lockViewport);
     window.addEventListener('orientationchange', () => setTimeout(lockViewport, 150));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) lockViewport(); });
+    window.addEventListener('scroll', () => { if (window.scrollY > 0) window.scrollTo(0, 0); }, { passive: true });
+    setInterval(lockViewport, 300); // イベントが来ない端末への保険
+
+    // 実機診断モード: ?diag=1 でライブ数値をオーバーレイ表示 (スクショで原因特定用)
+    if (new URLSearchParams(location.search).get('diag') === '1') {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:4px;left:4px;z-index:9999;background:rgba(0,0,0,0.78);color:#0f0;font:11px/1.6 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre;';
+      document.body.appendChild(el);
+      setInterval(() => {
+        const vv = window.visualViewport;
+        const step = document.querySelector('.swipe-step');
+        const r = step ? step.getBoundingClientRect() : { top: 0, bottom: 0, height: 0 };
+        el.textContent =
+          'inner: ' + window.innerWidth + 'x' + window.innerHeight +
+          '\nclientH: ' + document.documentElement.clientHeight +
+          '\nvv: ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' ot:' + Math.round(vv.offsetTop) + ' pt:' + Math.round(vv.pageTop) : 'none') +
+          '\nscrollY: ' + Math.round(window.scrollY) +
+          '\napp-h: ' + document.documentElement.style.getPropertyValue('--app-h') +
+          '\nstep: ' + Math.round(r.top) + '..' + Math.round(r.bottom) + ' (h' + Math.round(r.height) + ')' +
+          '\nscreen: ' + screen.width + 'x' + screen.height + ' dpr:' + devicePixelRatio;
+      }, 500);
+    }
   }
 
   // インジケーター生成 (scroll モードではドット自体作らない)
