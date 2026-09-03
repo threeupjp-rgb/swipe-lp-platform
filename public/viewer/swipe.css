@@ -799,16 +799,22 @@ body.dir-scroll .bg-fill { display: none; }
   .swipe-container:hover .swipe-nav { opacity: 1; }
 }
 
-/* ローディング */
+/* ローディング (初回表示カーテン)
+   描画倍率が確定するまでの最初の~1秒を覆い隠す役割も兼ねるため、
+   ビューポート解釈がどう狂っても画面全域を覆う大きさにしている */
 .swipe-loading {
   position: fixed;
-  inset: 0;
+  top: -30vh;
+  left: -5vw;
+  width: 110vw;
+  height: 190vh;
+  padding-bottom: 50vh; /* スピナーを可視領域の中央付近へ */
   display: flex;
   align-items: center;
   justify-content: center;
   background: #1a1a2e;
   z-index: 200;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.35s ease;
 }
 
 .swipe-loading.hidden {

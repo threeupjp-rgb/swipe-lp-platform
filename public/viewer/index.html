@@ -284,6 +284,20 @@ function fireConversion(pixels, opts = {}) {
   if (lp.avg_color && (lp.config.direction || 'horizontal') !== 'scroll') {
     document.documentElement.style.backgroundColor = lp.avg_color;
     document.body.style.backgroundColor = lp.avg_color;
+    // ローディングカーテンもテーマ色に。明るい色ならスピナーを暗色に切替
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+      loadingEl.style.background = lp.avg_color;
+      const m = lp.avg_color.match(/rgb\((\d+),(\d+),(\d+)\)/);
+      if (m) {
+        const lum = 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3];
+        const sp = loadingEl.querySelector('.spinner');
+        if (sp && lum > 140) {
+          sp.style.borderColor = 'rgba(0,0,0,0.15)';
+          sp.style.borderTopColor = 'rgba(0,0,0,0.55)';
+        }
+      }
+    }
   }
 
   // 方向設定
@@ -1078,7 +1092,7 @@ function fireConversion(pixels, opts = {}) {
     engine.next();
   });
 
-  // ローディング非表示
+  // ローディング非表示 (即時。広告LPなので人工的な遅延は入れない)
   document.getElementById('loading').classList.add('hidden');
   setTimeout(() => document.getElementById('loading').remove(), 300);
 })();
