@@ -537,6 +537,12 @@ function fireConversion(pixels, opts = {}) {
       }
       // ずれスクロールを打ち消す (上切れ防止)
       if (window.scrollY > 0 || document.documentElement.scrollTop > 0) window.scrollTo(0, 0);
+      // レイアウトビューポートがブラウザバー裏に置かれる端末 (Chrome iOS等) の補正:
+      // visualViewport.offsetTop が恒常的に >0 なら、その分だけ全体を下へずらして可視領域に合わせる
+      const vv = window.visualViewport;
+      const ot = (vv && (!vv.scale || Math.abs(vv.scale - 1) < 0.02)) ? Math.round(vv.offsetTop) : 0;
+      const want = (ot > 8 && window.scrollY === 0) ? `translateY(${ot}px)` : '';
+      if (document.body.style.transform !== want) document.body.style.transform = want;
     };
     lockViewport();
     if (window.visualViewport) {
@@ -550,9 +556,10 @@ function fireConversion(pixels, opts = {}) {
     setInterval(lockViewport, 300); // イベントが来ない端末への保険
 
     // 実機診断モード: ?diag=1 でライブ数値をオーバーレイ表示 (スクショで原因特定用)
+    // ページ自体が上下にずれても読めるよう画面中央付近に出す
     if (new URLSearchParams(location.search).get('diag') === '1') {
       const el = document.createElement('div');
-      el.style.cssText = 'position:fixed;top:4px;left:4px;z-index:9999;background:rgba(0,0,0,0.78);color:#0f0;font:11px/1.6 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre;';
+      el.style.cssText = 'position:fixed;top:35%;left:4px;z-index:9999;background:rgba(0,0,0,0.78);color:#0f0;font:11px/1.6 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre;';
       document.body.appendChild(el);
       setInterval(() => {
         const vv = window.visualViewport;
@@ -561,9 +568,10 @@ function fireConversion(pixels, opts = {}) {
         el.textContent =
           'inner: ' + window.innerWidth + 'x' + window.innerHeight +
           '\nclientH: ' + document.documentElement.clientHeight +
-          '\nvv: ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' ot:' + Math.round(vv.offsetTop) + ' pt:' + Math.round(vv.pageTop) : 'none') +
+          '\nvv: ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' ot:' + Math.round(vv.offsetTop) + ' pt:' + Math.round(vv.pageTop) + ' sc:' + (vv.scale || 1).toFixed(2) : 'none') +
           '\nscrollY: ' + Math.round(window.scrollY) +
           '\napp-h: ' + document.documentElement.style.getPropertyValue('--app-h') +
+          '\nshift: ' + (document.body.style.transform || 'none') +
           '\nstep: ' + Math.round(r.top) + '..' + Math.round(r.bottom) + ' (h' + Math.round(r.height) + ')' +
           '\nscreen: ' + screen.width + 'x' + screen.height + ' dpr:' + devicePixelRatio;
       }, 500);

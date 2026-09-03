@@ -80,6 +80,9 @@ body.dir-vertical { touch-action: pan-x; }
 html.vv-locked,
 html.vv-locked body {
   height: var(--app-h);
+  /* 描画クリップを解除: レイアウトビューポートがブラウザバー裏に置かれる端末で、
+     ページ枠より下の領域にも .bg-fill を描かせる (黒帯をぼかし画像で埋める) */
+  overflow: visible;
 }
 html.vv-locked .swipe-container {
   height: var(--app-h);
@@ -110,10 +113,10 @@ html.vv-locked .swipe-track-v .swipe-step {
    端末のビューポート解釈がどう狂っても黒帯ではなく絵柄の続きが見える保険 */
 .bg-fill {
   position: fixed;
-  top: -5vh;
+  top: -30vh;
   left: -5vw;
   width: 110vw;
-  height: 130vh;
+  height: 190vh; /* ビューポート解釈がどれだけ狂っても画面全域を覆う */
   background: #000;
   background-size: cover;
   background-position: center top;
