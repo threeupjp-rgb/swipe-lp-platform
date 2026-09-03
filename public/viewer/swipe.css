@@ -4,10 +4,13 @@
   padding: 0;
 }
 
+/* 高さは lvh (最大ビューポート) 基準。
+   dvh だとブラウザバーの表示切替と食い違った瞬間に下へ黒帯が出る端末があるため、
+   常に画面最大サイズで描画し、バー表示中は下端が僅かに隠れる方を取る */
 html, body {
   width: 100%;
   height: 100%;
-  height: 100dvh;
+  height: 100lvh;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -19,10 +22,14 @@ html, body {
 body.dir-horizontal { touch-action: pan-y; }
 body.dir-vertical { touch-action: pan-x; }
 
-/* スワイプコンテナ */
+/* スワイプコンテナ (inset:0 だと小さい方のビューポートに縮む端末があるため高さ明示) */
 .swipe-container {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100lvh;
   overflow: hidden;
   touch-action: none; /* ブラウザのジェスチャー処理を無効化、JSで全制御 */
 }
@@ -49,7 +56,7 @@ body.dir-vertical { touch-action: pan-x; }
   flex: 0 0 100vw;
   width: 100vw;
   height: 100vh;
-  height: 100dvh;
+  height: 100lvh;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -58,13 +65,13 @@ body.dir-vertical { touch-action: pan-x; }
   overflow: hidden;
 }
 
-/* 各ステップ — 縦モード: flex-basisをdvhに */
+/* 各ステップ — 縦モード: flex-basisもlvhに (JS側は実測値でスワイプ距離を合わせる) */
 .swipe-track-v .swipe-step {
   flex: 0 0 100vh;
-  flex: 0 0 100dvh;
+  flex: 0 0 100lvh;
   width: 100vw;
   height: 100vh;
-  height: 100dvh;
+  height: 100lvh;
 }
 
 .swipe-step .step-bg {
