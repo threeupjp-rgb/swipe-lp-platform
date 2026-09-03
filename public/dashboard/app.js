@@ -865,6 +865,83 @@ function removeStep(index) {
   renderStepsEditor();
 }
 
+// ===== ステップ並び替え (作成/編集モーダル共通) =====
+function moveArrayItem(arr, from, to) {
+  if (to < 0 || to >= arr.length || from === to) return false;
+  const [item] = arr.splice(from, 1);
+  arr.splice(to, 0, item);
+  return true;
+}
+
+function moveStep(index, delta) {
+  if (moveArrayItem(createSteps, index, index + delta)) renderStepsEditor();
+}
+
+function moveEditStep(index, delta) {
+  if (moveArrayItem(editSteps, index, index + delta)) renderEditStepsEditor();
+}
+
+// ドラッグ&ドロップ並び替え。ドラッグ開始は ⠿ ハンドル限定 (入力欄のテキスト選択と干渉させない)
+function makeStepsSortable(container, arr, rerender) {
+  let dragIndex = null;
+  const cards = [...container.children];
+  const clearMarkers = () => cards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+
+  cards.forEach((card, i) => {
+    const handle = card.querySelector('.step-drag');
+    if (handle) {
+      handle.addEventListener('mousedown', () => { card.draggable = true; });
+      handle.addEventListener('touchstart', () => { card.draggable = true; }, { passive: true });
+    }
+    card.addEventListener('mouseup', () => { card.draggable = false; });
+    card.addEventListener('dragstart', (e) => {
+      dragIndex = i;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+    });
+    card.addEventListener('dragend', () => {
+      card.draggable = false;
+      card.classList.remove('dragging');
+      clearMarkers();
+      dragIndex = null;
+    });
+    card.addEventListener('dragover', (e) => {
+      if (dragIndex === null || i === dragIndex) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = card.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      card.classList.toggle('drag-over-top', before);
+      card.classList.toggle('drag-over-bottom', !before);
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    card.addEventListener('drop', (e) => {
+      if (dragIndex === null || i === dragIndex) return;
+      e.preventDefault();
+      const rect = card.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      let to = before ? i : i + 1;
+      if (dragIndex < to) to--;
+      if (moveArrayItem(arr, dragIndex, to)) rerender();
+    });
+  });
+}
+
+// ステップカード右上の操作ボタン群 (⠿ドラッグ / ↑↓移動 / ×削除)
+function stepActionsHtml(index, total, movePrefix, removeFn) {
+  if (total <= 1) return '';
+  return `
+    <div class="step-actions">
+      <span class="step-drag" title="ドラッグで並び替え">&#x2630;</span>
+      <button class="step-move" onclick="${movePrefix}(${index},-1)" ${index === 0 ? 'disabled' : ''} title="上へ移動">&#x2191;</button>
+      <button class="step-move" onclick="${movePrefix}(${index},1)" ${index === total - 1 ? 'disabled' : ''} title="下へ移動">&#x2193;</button>
+      <button class="step-remove" onclick="${removeFn}(${index})" title="削除">&times;</button>
+    </div>`;
+}
+
 function renderStepsEditor() {
   const container = document.getElementById('stepsEditor');
   container.innerHTML = '';
@@ -874,7 +951,7 @@ function renderStepsEditor() {
     div.className = 'step-editor-item';
     div.innerHTML = `
       <span class="step-num">Step ${i + 1}</span>
-      ${createSteps.length > 1 ? `<button class="step-remove" onclick="removeStep(${i})">&times;</button>` : ''}
+      ${stepActionsHtml(i, createSteps.length, 'moveStep', 'removeStep')}
       <div style="margin-top:8px;">
         <div class="form-row">
           <label>画像</label>
@@ -914,6 +991,8 @@ function renderStepsEditor() {
     `;
     container.appendChild(div);
   });
+
+  makeStepsSortable(container, createSteps, renderStepsEditor);
 }
 
 function escapeHtml(str) {
@@ -972,7 +1051,8 @@ async function submitCreateLP() {
     description: s.description || '',
     image: s.imageUrl || '',
     bgGradient: s.bgGradient || 'linear-gradient(135deg, #667eea, #764ba2)',
-    textColor: s.textColor || '#ffffff'
+    textColor: s.textColor || '#ffffff',
+    show_cta_after: !!s.show_cta_after
   }));
 
   // ピクセル設定を収集
@@ -1146,7 +1226,8 @@ async function openEditLP() {
     description: s.description || '',
     imageUrl: s.image || '',
     bgGradient: s.bgGradient || '',
-    textColor: s.textColor || '#ffffff'
+    textColor: s.textColor || '#ffffff',
+    show_cta_after: !!s.show_cta_after
   }));
   if (editSteps.length === 0) {
     editSteps = [{ title: '', description: '', imageUrl: '', bgGradient: '', textColor: '#ffffff' }];
@@ -1189,7 +1270,7 @@ function renderEditStepsEditor() {
     div.className = 'step-editor-item';
     div.innerHTML = `
       <span class="step-num">Step ${i + 1}</span>
-      ${editSteps.length > 1 ? `<button class="step-remove" onclick="removeEditStep(${i})">&times;</button>` : ''}
+      ${stepActionsHtml(i, editSteps.length, 'moveEditStep', 'removeEditStep')}
       <div style="margin-top:8px;">
         <div class="form-row">
           <label>画像</label>
@@ -1229,6 +1310,8 @@ function renderEditStepsEditor() {
     `;
     container.appendChild(div);
   });
+
+  makeStepsSortable(container, editSteps, renderEditStepsEditor);
 }
 
 async function handleEditImageUpload(stepIndex, input) {
@@ -1284,7 +1367,8 @@ async function submitEditLP() {
     description: s.description || '',
     image: s.imageUrl || '',
     bgGradient: s.bgGradient || 'linear-gradient(135deg, #667eea, #764ba2)',
-    textColor: s.textColor || '#ffffff'
+    textColor: s.textColor || '#ffffff',
+    show_cta_after: !!s.show_cta_after
   }));
 
   const pixels = {};
