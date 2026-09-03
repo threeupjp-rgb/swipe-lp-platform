@@ -1601,6 +1601,41 @@ async function submitEditLP() {
   }
 }
 
+// ===== LP複製 =====
+async function duplicateLP() {
+  if (!currentLpId) return alert('LPを選択してください');
+
+  const res = await fetch(`${API}/api/lps/${currentLpId}`);
+  if (!res.ok) return alert('LP情報の取得に失敗しました');
+  const lp = await res.json();
+
+  const slug = prompt(
+    `「${lp.name}」を複製します。\n新しいスラッグを入力してください (半角英数字とハイフン)\n※URLは /lp/スラッグ になります`,
+    `${lp.slug}-2`
+  );
+  if (slug === null) return; // キャンセル
+  const clean = slug.trim();
+  if (!/^[a-z0-9-]+$/.test(clean)) return alert('スラッグは半角英数字とハイフンのみ使用できます');
+
+  try {
+    const r = await fetch(`${API}/api/lps/${currentLpId}/duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: clean })
+    });
+    const data = await r.json();
+    if (data.error) return alert(data.error);
+
+    currentLpId = data.id;
+    await loadLpList(true);
+    await loadLpDetail(data.id);
+    loadTabData();
+    alert(`複製しました！\n新LP: ${data.name}\nURL: ${location.origin}/lp/${data.slug}\n\n「編集」から名前・画像・アンカー等を変更してください`);
+  } catch (e) {
+    alert('複製に失敗しました: ' + e.message);
+  }
+}
+
 async function deleteLP() {
   if (!confirm('このLPを削除しますか？アナリティクスデータも全て削除されます。')) return;
 

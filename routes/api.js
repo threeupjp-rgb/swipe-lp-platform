@@ -184,6 +184,34 @@ router.put('/lps/:lpId', (req, res) => {
   res.json({ success: true });
 });
 
+// LP複製 (設定・config丸ごとコピー。画像は同じ /uploads URLを参照するのでファイルコピー不要)
+router.post('/lps/:lpId/duplicate', (req, res) => {
+  const src = req.db.prepare('SELECT * FROM lps WHERE id = ?').get(req.params.lpId);
+  if (!src) return res.status(404).json({ error: 'LP not found' });
+
+  const { slug, name } = req.body || {};
+  const newSlug = String(slug || '').trim();
+  if (!newSlug) return res.status(400).json({ error: 'slug は必須です' });
+  if (!/^[a-z0-9-]+$/.test(newSlug)) {
+    return res.status(400).json({ error: 'スラッグは半角英数字とハイフンのみ使用できます' });
+  }
+  const existing = req.db.prepare('SELECT id FROM lps WHERE slug = ?').get(newSlug);
+  if (existing) return res.status(409).json({ error: 'このスラッグは既に使われています' });
+
+  const crypto = require('crypto');
+  const id = crypto.randomUUID();
+  const newName = String(name || '').trim() || `${src.name} (コピー)`;
+  // id/slug/name以外の列は動的コピー (タイムスタンプ・通知送信履歴はリセット)
+  const skip = new Set(['id', 'slug', 'name', 'created_at', 'updated_at', 'notify_last_sent_at']);
+  const cols = Object.keys(src).filter(c => !skip.has(c));
+  req.db.prepare(`
+    INSERT INTO lps (id, slug, name, ${cols.join(', ')})
+    VALUES (?, ?, ?, ${cols.map(() => '?').join(', ')})
+  `).run(id, newSlug, newName, ...cols.map(c => src[c]));
+
+  res.json({ id, slug: newSlug, name: newName, url: `/lp/${newSlug}` });
+});
+
 // LP削除
 router.delete('/lps/:lpId', (req, res) => {
   const lp = req.db.prepare('SELECT id FROM lps WHERE id = ?').get(req.params.lpId);
