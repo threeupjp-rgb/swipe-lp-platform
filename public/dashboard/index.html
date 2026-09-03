@@ -989,10 +989,17 @@
   .btn-anchor-add { padding: 4px 10px; font-size: 12px; cursor: pointer; border: 1px dashed var(--border); background: none; color: var(--text-muted); border-radius: 6px; font-family: inherit; }
   .btn-anchor-add:hover { border-color: var(--primary); color: var(--primary); }
   .anchor-note { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11px; }
-  .image-upload-area.drawing input[type="file"] { pointer-events: none; }
-  .anchor-draw-overlay { position: absolute; cursor: crosshair; z-index: 5; background: rgba(99,102,241,0.08); touch-action: none; }
+  .anchor-draw-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+  .anchor-draw-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; max-width: 94vw; display: flex; flex-direction: column; gap: 10px; }
+  .anchor-draw-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .anchor-draw-title span { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+  .anchor-draw-stage { position: relative; align-self: center; }
+  .anchor-draw-stage img { display: block; max-width: 86vw; max-height: 74vh; }
+  .anchor-draw-canvas { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
   .anchor-draw-rect { position: absolute; border: 2px solid var(--primary); background: rgba(99,102,241,0.25); display: none; pointer-events: none; }
-  .anchor-draw-hint { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
+  .anchor-draw-existing { position: absolute; border: 1.5px dashed var(--success); background: rgba(16,185,129,0.12); color: var(--success); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .anchor-draw-existing.current { border-color: var(--primary); background: rgba(99,102,241,0.18); color: var(--primary); }
+  .anchor-draw-actions { display: flex; justify-content: flex-end; }
   .anchor-preview-rect { position: absolute; border: 1.5px dashed var(--primary); background: rgba(99,102,241,0.18); pointer-events: none; color: var(--primary); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 
   .image-upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.2s; position: relative; overflow: hidden; }

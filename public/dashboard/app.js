@@ -1026,41 +1026,73 @@ function paintAnchorPreviews(which, stepIndex) {
   else img.addEventListener('load', paint);
 }
 
-// 画像プレビュー上でドラッグして範囲指定
+// 原寸大モーダルで画像上をドラッグして範囲指定
+// (カード内の小さいプレビューでは複数ボタンの正確な配置が難しいため、大きく表示して描く)
 function startAnchorDraw(which, stepIndex, anchorIndex) {
   const ctx = _anchorCtx(which);
-  const area = document.getElementById(ctx.areaPrefix + stepIndex);
-  const img = area ? area.querySelector('img') : null;
-  if (!img) return alert('先に画像をアップロードしてください');
+  const step = ctx.steps[stepIndex];
+  if (!step.imageUrl) return alert('先に画像をアップロードしてください');
 
-  const areaRect = area.getBoundingClientRect();
-  const imgRect = img.getBoundingClientRect();
-  const ov = document.createElement('div');
-  ov.className = 'anchor-draw-overlay';
-  ov.style.left = (imgRect.left - areaRect.left) + 'px';
-  ov.style.top = (imgRect.top - areaRect.top) + 'px';
-  ov.style.width = imgRect.width + 'px';
-  ov.style.height = imgRect.height + 'px';
-  ov.innerHTML = '<div class="anchor-draw-hint">画像上をドラッグして範囲を指定</div><div class="anchor-draw-rect"></div>';
-  area.classList.add('drawing');
-  area.appendChild(ov);
-  const rectEl = ov.querySelector('.anchor-draw-rect');
+  const toLabel = step.anchors[anchorIndex].to ? `${step.anchors[anchorIndex].to}ページ目` : '未設定';
+  const modal = document.createElement('div');
+  modal.className = 'anchor-draw-modal';
+  modal.innerHTML = `
+    <div class="anchor-draw-box">
+      <div class="anchor-draw-title">ドラッグしてタップ範囲を指定 <span>(このアンカーの飛び先: ${toLabel} ／ 緑の枠=設定済みの他アンカー)</span></div>
+      <div class="anchor-draw-stage">
+        <img src="${step.imageUrl}" draggable="false">
+        <div class="anchor-draw-canvas"><div class="anchor-draw-rect"></div></div>
+      </div>
+      <div class="anchor-draw-actions">
+        <button type="button" class="btn-anchor-add" data-cancel>キャンセル (Esc)</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const canvas = modal.querySelector('.anchor-draw-canvas');
+  const rectEl = modal.querySelector('.anchor-draw-rect');
+  const img = modal.querySelector('img');
+
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { document.removeEventListener('keydown', onKey); modal.remove(); };
+  document.addEventListener('keydown', onKey);
+  modal.querySelector('[data-cancel]').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+  // 既存アンカーを参考表示 (描画対象の現在範囲は紫、他は緑)
+  const paintExisting = () => {
+    (step.anchors || []).forEach((a, j) => {
+      if (!(a.w > 0)) return;
+      const r = document.createElement('div');
+      r.className = 'anchor-draw-existing' + (j === anchorIndex ? ' current' : '');
+      r.style.left = a.x + '%';
+      r.style.top = a.y + '%';
+      r.style.width = a.w + '%';
+      r.style.height = a.h + '%';
+      r.textContent = a.to ? `→${a.to}` : '';
+      canvas.appendChild(r);
+    });
+  };
+  if (img.complete && img.naturalWidth) paintExisting();
+  else img.addEventListener('load', paintExisting);
 
   let sx = null, sy = null;
   const clamp = (v, max) => Math.min(Math.max(v, 0), max);
   const local = (e) => {
-    const r = ov.getBoundingClientRect();
+    const r = canvas.getBoundingClientRect();
     return { x: clamp(e.clientX - r.left, r.width), y: clamp(e.clientY - r.top, r.height), r };
   };
-  ov.addEventListener('pointerdown', (e) => {
+  canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    ov.setPointerCapture(e.pointerId);
+    canvas.setPointerCapture(e.pointerId);
     const p = local(e);
     sx = p.x; sy = p.y;
+    rectEl.style.left = sx + 'px';
+    rectEl.style.top = sy + 'px';
+    rectEl.style.width = '0px';
+    rectEl.style.height = '0px';
     rectEl.style.display = 'block';
-    ov.querySelector('.anchor-draw-hint').style.display = 'none';
   });
-  ov.addEventListener('pointermove', (e) => {
+  canvas.addEventListener('pointermove', (e) => {
     if (sx === null) return;
     const p = local(e);
     rectEl.style.left = Math.min(sx, p.x) + 'px';
@@ -1068,22 +1100,25 @@ function startAnchorDraw(which, stepIndex, anchorIndex) {
     rectEl.style.width = Math.abs(p.x - sx) + 'px';
     rectEl.style.height = Math.abs(p.y - sy) + 'px';
   });
-  ov.addEventListener('pointerup', (e) => {
+  canvas.addEventListener('pointerup', (e) => {
     if (sx === null) return;
     const p = local(e);
     const pct = (v) => Math.round(v * 1000) / 10;
     const w = Math.abs(p.x - sx) / p.r.width;
     const h = Math.abs(p.y - sy) / p.r.height;
     if (w >= 0.02 && h >= 0.01) {
-      const a = ctx.steps[stepIndex].anchors[anchorIndex];
+      const a = step.anchors[anchorIndex];
       a.x = pct(Math.min(sx, p.x) / p.r.width);
       a.y = pct(Math.min(sy, p.y) / p.r.height);
       a.w = pct(w);
       a.h = pct(h);
+      close();
+      ctx.rerender();
+    } else {
+      // 極小はミスドラッグ扱い → モーダルを閉じず描き直し
+      sx = sy = null;
+      rectEl.style.display = 'none';
     }
-    area.classList.remove('drawing');
-    ov.remove();
-    ctx.rerender();
   });
 }
 
