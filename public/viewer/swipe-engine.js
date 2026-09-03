@@ -27,6 +27,8 @@ class SwipeEngine {
 
     this.track = null;
     this.listeners = {};
+    this._anchorLayers = [];
+    this._moved = 0;
     this._onResize = this._onResize.bind(this);
   }
 
@@ -90,15 +92,73 @@ class SwipeEngine {
       }
       el.appendChild(content);
 
+      // タップアンカー (画像の一部タップで指定ステップへジャンプ)
+      if (Array.isArray(step.anchors) && step.anchors.length) {
+        this._buildAnchorLayer(el, step, i);
+      }
+
       this.track.appendChild(el);
     });
 
     this.container.appendChild(this.track);
 
+    // アンカーレイヤーを画像の描画領域に合わせる (レイアウト確定後)
+    this._anchorLayers.forEach(({ layer, img, stepEl }) => {
+      if (img.complete && img.naturalWidth) this._fitAnchorLayer(layer, img, stepEl);
+      else img.addEventListener('load', () => this._fitAnchorLayer(layer, img, stepEl));
+    });
+
     this._bindEvents();
     this._updateTransform(false);
 
     window.addEventListener('resize', this._onResize);
+  }
+
+  _buildAnchorLayer(stepEl, step, stepIndex) {
+    const layer = document.createElement('div');
+    layer.className = 'anchor-layer';
+    step.anchors.forEach(a => {
+      const to = parseInt(a.to, 10);
+      if (!to || to < 1 || to > this.state.totalSteps || to === stepIndex + 1) return;
+      const zone = document.createElement('div');
+      zone.className = 'anchor-zone';
+      zone.style.left = `${a.x}%`;
+      zone.style.top = `${a.y}%`;
+      zone.style.width = `${a.w}%`;
+      zone.style.height = `${a.h}%`;
+      if (a.label) {
+        const label = document.createElement('span');
+        label.className = 'anchor-label';
+        label.textContent = a.label;
+        zone.appendChild(label);
+      }
+      zone.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this._moved > 10) return; // スワイプ直後の誤タップ防止
+        this.goTo(to - 1, true);
+        this._emit('anchorJump', { from: stepIndex, to: to - 1 });
+      });
+      layer.appendChild(zone);
+    });
+    stepEl.appendChild(layer);
+
+    // 画像ステップは object-fit: cover の描画領域に合わせて後で配置
+    const img = stepEl.querySelector('img.step-image');
+    if (img) this._anchorLayers.push({ layer, img, stepEl });
+  }
+
+  // object-fit: cover で実際に表示されている画像領域とレイヤーを一致させる
+  // (アンカー座標は元画像に対する%のため)
+  _fitAnchorLayer(layer, img, stepEl) {
+    const cw = stepEl.clientWidth, ch = stepEl.clientHeight;
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    if (!cw || !ch || !nw || !nh) return;
+    const scale = Math.max(cw / nw, ch / nh);
+    const w = nw * scale, h = nh * scale;
+    layer.style.left = `${(cw - w) / 2}px`;
+    layer.style.top = `${(ch - h) / 2}px`;
+    layer.style.width = `${w}px`;
+    layer.style.height = `${h}px`;
   }
 
   _bindEvents() {
@@ -153,6 +213,7 @@ class SwipeEngine {
     this.state.delta = 0;
     this.state.startTime = Date.now();
     this.state.directionLocked = null;
+    this._moved = 0;
     this.track.classList.remove('animating');
     this._emit('swipeStart', { index: this.state.currentIndex });
   }
@@ -162,6 +223,7 @@ class SwipeEngine {
 
     const dx = x - this.state.startX;
     const dy = y - this.state.startY;
+    this._moved = Math.max(this._moved, Math.hypot(dx, dy));
 
     // 方向ロック判定
     if (!this.state.directionLocked) {
@@ -264,6 +326,7 @@ class SwipeEngine {
       : this.container.offsetWidth;
     this.state.delta = 0;
     this._updateTransform(false);
+    this._anchorLayers.forEach(({ layer, img, stepEl }) => this._fitAnchorLayer(layer, img, stepEl));
   }
 
   goTo(index, animate = true) {

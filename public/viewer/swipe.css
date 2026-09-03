@@ -105,6 +105,34 @@ body.dir-vertical { touch-action: pan-x; }
   text-shadow: 0 1px 8px rgba(0,0,0,0.1);
 }
 
+/* タップアンカー (画像の一部タップで指定ページへジャンプ) */
+.anchor-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+.anchor-zone {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.anchor-label {
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 999px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
 /* ステップ番号バッジ */
 .step-badge {
   display: none;

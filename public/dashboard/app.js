@@ -942,6 +942,151 @@ function stepActionsHtml(index, total, movePrefix, removeFn) {
     </div>`;
 }
 
+// ===== タップアンカー (画像の範囲タップで別ページへジャンプ) =====
+function _anchorCtx(which) {
+  return which === 'edit'
+    ? { steps: editSteps, rerender: renderEditStepsEditor, areaPrefix: 'edit-upload-area-' }
+    : { steps: createSteps, rerender: renderStepsEditor, areaPrefix: 'upload-area-' };
+}
+
+function addAnchor(which, stepIndex) {
+  const ctx = _anchorCtx(which);
+  const st = ctx.steps[stepIndex];
+  if (!st.anchors) st.anchors = [];
+  st.anchors.push({ x: 0, y: 0, w: 0, h: 0, to: null, label: '' });
+  ctx.rerender();
+}
+
+function removeAnchor(which, stepIndex, anchorIndex) {
+  const ctx = _anchorCtx(which);
+  ctx.steps[stepIndex].anchors.splice(anchorIndex, 1);
+  ctx.rerender();
+}
+
+function setAnchorField(which, stepIndex, anchorIndex, field, value) {
+  const a = _anchorCtx(which).steps[stepIndex].anchors[anchorIndex];
+  if (field === 'to') a.to = parseInt(value, 10) || null;
+  else a[field] = value;
+}
+
+// 保存用: 飛び先未設定・範囲未指定のアンカーは捨てる
+function cleanAnchors(anchors) {
+  return (anchors || [])
+    .filter(a => a.to && a.w > 0 && a.h > 0)
+    .map(a => ({ x: a.x, y: a.y, w: a.w, h: a.h, to: parseInt(a.to, 10), label: (a.label || '').trim() }));
+}
+
+function anchorSectionHtml(which, stepIndex, step, total) {
+  const anchors = step.anchors || [];
+  const rows = anchors.map((a, j) => `
+    <div class="anchor-row">
+      <span>飛び先</span>
+      <input type="number" min="1" max="${total}" value="${a.to || ''}" onchange="setAnchorField('${which}',${stepIndex},${j},'to',this.value)">
+      <span>ページ目</span>
+      <button type="button" class="btn-anchor-draw" onclick="startAnchorDraw('${which}',${stepIndex},${j})">範囲を描く</button>
+      <span class="anchor-coords">${a.w > 0 ? `x${a.x} y${a.y} w${a.w} h${a.h} (%)` : '範囲未指定'}</span>
+      <input type="text" class="anchor-label-input" placeholder="ボタン文言 (空=透明領域)" value="${escapeHtml(a.label || '')}" onchange="setAnchorField('${which}',${stepIndex},${j},'label',this.value)">
+      <button type="button" class="anchor-remove" onclick="removeAnchor('${which}',${stepIndex},${j})" title="このアンカーを削除">&times;</button>
+    </div>`).join('');
+  return `
+    <div class="form-row anchor-config">
+      <label>タップアンカー (画像の範囲タップで別ページへジャンプ、任意)</label>
+      ${rows}
+      <button type="button" class="btn-anchor-add" onclick="addAnchor('${which}',${stepIndex})">+ アンカー追加</button>
+      ${anchors.length ? '<small class="anchor-note">※飛び先はステップの並び順 (1始まり)。ステップを並び替え・削除したら飛び先の番号を見直してください</small>' : ''}
+    </div>`;
+}
+
+// プレビュー画像上に設定済みアンカー範囲を表示
+function paintAnchorPreviews(which, stepIndex) {
+  const ctx = _anchorCtx(which);
+  const area = document.getElementById(ctx.areaPrefix + stepIndex);
+  const step = ctx.steps[stepIndex];
+  if (!area || !step) return;
+  const img = area.querySelector('img');
+  const anchors = (step.anchors || []).filter(a => a.w > 0);
+  if (!img || !anchors.length) return;
+  const paint = () => {
+    area.querySelectorAll('.anchor-preview-rect').forEach(el => el.remove());
+    const areaRect = area.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    if (!imgRect.width) return; // モーダル非表示中は描かない
+    anchors.forEach(a => {
+      const r = document.createElement('div');
+      r.className = 'anchor-preview-rect';
+      r.style.left = (imgRect.left - areaRect.left + imgRect.width * a.x / 100) + 'px';
+      r.style.top = (imgRect.top - areaRect.top + imgRect.height * a.y / 100) + 'px';
+      r.style.width = (imgRect.width * a.w / 100) + 'px';
+      r.style.height = (imgRect.height * a.h / 100) + 'px';
+      r.textContent = a.to ? `→${a.to}` : '';
+      area.appendChild(r);
+    });
+  };
+  if (img.complete && img.naturalWidth) setTimeout(paint, 60);
+  else img.addEventListener('load', paint);
+}
+
+// 画像プレビュー上でドラッグして範囲指定
+function startAnchorDraw(which, stepIndex, anchorIndex) {
+  const ctx = _anchorCtx(which);
+  const area = document.getElementById(ctx.areaPrefix + stepIndex);
+  const img = area ? area.querySelector('img') : null;
+  if (!img) return alert('先に画像をアップロードしてください');
+
+  const areaRect = area.getBoundingClientRect();
+  const imgRect = img.getBoundingClientRect();
+  const ov = document.createElement('div');
+  ov.className = 'anchor-draw-overlay';
+  ov.style.left = (imgRect.left - areaRect.left) + 'px';
+  ov.style.top = (imgRect.top - areaRect.top) + 'px';
+  ov.style.width = imgRect.width + 'px';
+  ov.style.height = imgRect.height + 'px';
+  ov.innerHTML = '<div class="anchor-draw-hint">画像上をドラッグして範囲を指定</div><div class="anchor-draw-rect"></div>';
+  area.classList.add('drawing');
+  area.appendChild(ov);
+  const rectEl = ov.querySelector('.anchor-draw-rect');
+
+  let sx = null, sy = null;
+  const clamp = (v, max) => Math.min(Math.max(v, 0), max);
+  const local = (e) => {
+    const r = ov.getBoundingClientRect();
+    return { x: clamp(e.clientX - r.left, r.width), y: clamp(e.clientY - r.top, r.height), r };
+  };
+  ov.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ov.setPointerCapture(e.pointerId);
+    const p = local(e);
+    sx = p.x; sy = p.y;
+    rectEl.style.display = 'block';
+    ov.querySelector('.anchor-draw-hint').style.display = 'none';
+  });
+  ov.addEventListener('pointermove', (e) => {
+    if (sx === null) return;
+    const p = local(e);
+    rectEl.style.left = Math.min(sx, p.x) + 'px';
+    rectEl.style.top = Math.min(sy, p.y) + 'px';
+    rectEl.style.width = Math.abs(p.x - sx) + 'px';
+    rectEl.style.height = Math.abs(p.y - sy) + 'px';
+  });
+  ov.addEventListener('pointerup', (e) => {
+    if (sx === null) return;
+    const p = local(e);
+    const pct = (v) => Math.round(v * 1000) / 10;
+    const w = Math.abs(p.x - sx) / p.r.width;
+    const h = Math.abs(p.y - sy) / p.r.height;
+    if (w >= 0.02 && h >= 0.01) {
+      const a = ctx.steps[stepIndex].anchors[anchorIndex];
+      a.x = pct(Math.min(sx, p.x) / p.r.width);
+      a.y = pct(Math.min(sy, p.y) / p.r.height);
+      a.w = pct(w);
+      a.h = pct(h);
+    }
+    area.classList.remove('drawing');
+    ov.remove();
+    ctx.rerender();
+  });
+}
+
 function renderStepsEditor() {
   const container = document.getElementById('stepsEditor');
   container.innerHTML = '';
@@ -987,9 +1132,11 @@ function renderStepsEditor() {
             <span>このセクション末尾にCTAボタンを表示する <small style="color:var(--text-muted);">(スクロール型のみ有効)</small></span>
           </label>
         </div>
+        ${anchorSectionHtml('create', i, step, createSteps.length)}
       </div>
     `;
     container.appendChild(div);
+    paintAnchorPreviews('create', i);
   });
 
   makeStepsSortable(container, createSteps, renderStepsEditor);
@@ -1052,7 +1199,8 @@ async function submitCreateLP() {
     image: s.imageUrl || '',
     bgGradient: s.bgGradient || 'linear-gradient(135deg, #667eea, #764ba2)',
     textColor: s.textColor || '#ffffff',
-    show_cta_after: !!s.show_cta_after
+    show_cta_after: !!s.show_cta_after,
+    anchors: cleanAnchors(s.anchors)
   }));
 
   // ピクセル設定を収集
@@ -1227,7 +1375,8 @@ async function openEditLP() {
     imageUrl: s.image || '',
     bgGradient: s.bgGradient || '',
     textColor: s.textColor || '#ffffff',
-    show_cta_after: !!s.show_cta_after
+    show_cta_after: !!s.show_cta_after,
+    anchors: Array.isArray(s.anchors) ? s.anchors.map(a => ({ ...a })) : []
   }));
   if (editSteps.length === 0) {
     editSteps = [{ title: '', description: '', imageUrl: '', bgGradient: '', textColor: '#ffffff' }];
@@ -1306,9 +1455,11 @@ function renderEditStepsEditor() {
             <span>このセクション末尾にCTAボタンを表示する <small style="color:var(--text-muted);">(スクロール型のみ有効)</small></span>
           </label>
         </div>
+        ${anchorSectionHtml('edit', i, step, editSteps.length)}
       </div>
     `;
     container.appendChild(div);
+    paintAnchorPreviews('edit', i);
   });
 
   makeStepsSortable(container, editSteps, renderEditStepsEditor);
@@ -1368,7 +1519,8 @@ async function submitEditLP() {
     image: s.imageUrl || '',
     bgGradient: s.bgGradient || 'linear-gradient(135deg, #667eea, #764ba2)',
     textColor: s.textColor || '#ffffff',
-    show_cta_after: !!s.show_cta_after
+    show_cta_after: !!s.show_cta_after,
+    anchors: cleanAnchors(s.anchors)
   }));
 
   const pixels = {};

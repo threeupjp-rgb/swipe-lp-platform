@@ -324,6 +324,35 @@ function fireConversion(pixels, opts = {}) {
         // 画像なし: bgGradient を絶対配置で全体に (min-height 100svh のデフォルト継承)
         bg.style.background = step.bgGradient;
       }
+      // タップアンカー (画像の一部タップで指定セクションへスクロール)
+      // has-image セクションは bg = 画像の実寸ボックスなので %座標をそのまま使える
+      if (Array.isArray(step.anchors) && step.anchors.length) {
+        const layer = document.createElement('div');
+        layer.className = 'anchor-layer';
+        step.anchors.forEach(a => {
+          const to = parseInt(a.to, 10);
+          if (!to || to < 1 || to > steps.length || to === i + 1) return;
+          const zone = document.createElement('div');
+          zone.className = 'anchor-zone';
+          zone.style.left = `${a.x}%`;
+          zone.style.top = `${a.y}%`;
+          zone.style.width = `${a.w}%`;
+          zone.style.height = `${a.h}%`;
+          if (a.label) {
+            const label = document.createElement('span');
+            label.className = 'anchor-label';
+            label.textContent = a.label;
+            zone.appendChild(label);
+          }
+          zone.addEventListener('click', () => {
+            const t = containerEl.querySelector(`.scroll-section[data-index="${to - 1}"]`);
+            if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          layer.appendChild(zone);
+        });
+        bg.appendChild(layer);
+      }
+
       section.appendChild(bg);
 
       const badge = document.createElement('div');
