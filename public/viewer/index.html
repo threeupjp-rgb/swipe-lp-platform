@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>SwipeLP</title>
   <link rel="stylesheet" href="/viewer/swipe.css">
 </head>
@@ -504,14 +504,55 @@ function fireConversion(pixels, opts = {}) {
   //  2. イベント + 300msポーリングで常時補正 (イベントが発火しない端末対策)
   //  3. ステップ背後に現在画像のぼかし版 (.bg-fill) を敷き、残ったズレも黒帯にしない
   if (!isScroll) {
+    // WKWebView (Chrome iOS等) の「初回表示だけ縮小描画され、タッチで直る」バグ対策:
+    // 読み込み直後に viewport メタを再設定して倍率を強制再計算させる
+    const metaVp = document.querySelector('meta[name="viewport"]');
+    if (metaVp) {
+      let vpFlip = false;
+      const nudgeViewport = () => {
+        vpFlip = !vpFlip;
+        metaVp.setAttribute('content',
+          'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, minimum-scale=' + (vpFlip ? '1.0' : '1'));
+      };
+      nudgeViewport();
+      setTimeout(nudgeViewport, 300);
+      setTimeout(nudgeViewport, 1200);
+      window.addEventListener('pageshow', nudgeViewport);
+    }
+
     // 埋め草レイヤー (現在ステップの画像ぼかし拡大版)
     const bgFill = document.createElement('div');
     bgFill.className = 'bg-fill';
     document.body.insertBefore(bgFill, document.body.firstChild);
+
+    // ルート背景を現在ステップ画像の平均色に (縮小描画バグ中の余白も黒ではなくLPの色調になる)
+    const setRootBgFromImage = (src) => {
+      try {
+        const im = new Image();
+        im.onload = () => {
+          try {
+            const cv = document.createElement('canvas');
+            cv.width = cv.height = 8;
+            const cx = cv.getContext('2d');
+            cx.drawImage(im, 0, 0, 8, 8);
+            const d = cx.getImageData(0, 0, 8, 8).data;
+            let r = 0, g = 0, b = 0;
+            for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+            const n = d.length / 4;
+            const col = `rgb(${r / n | 0},${g / n | 0},${b / n | 0})`;
+            document.documentElement.style.backgroundColor = col;
+            document.body.style.backgroundColor = col;
+          } catch (e) { /* canvas汚染等は黙殺 (黒のまま) */ }
+        };
+        im.src = src;
+      } catch (e) { /* silent */ }
+    };
+
     const setBgFill = (idx) => {
       const st = lp.config.steps[idx] || {};
       if (st.image) {
         bgFill.style.backgroundImage = `url("${st.image}")`;
+        setRootBgFromImage(st.image);
       } else if (st.bgGradient) {
         bgFill.style.backgroundImage = 'none';
         bgFill.style.background = st.bgGradient;
