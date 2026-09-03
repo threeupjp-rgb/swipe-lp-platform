@@ -497,6 +497,33 @@ function fireConversion(pixels, opts = {}) {
     ? createScrollEngine(container, lp.config.steps)
     : (() => { const e = new SwipeEngine(container, { direction }); e.init(lp.config.steps); return e; })();
 
+  // ===== ビューポート実寸ロック (swipe モードのみ) =====
+  // 一部端末で 100dvh とブラウザバーの表示状態が食い違い、下に黒帯・上切れが発生する。
+  // visualViewport の実寸を --app-h に反映し続け、ビューポートのずれスクロールも常に0へ戻す。
+  if (!isScroll) {
+    let lastH = 0;
+    const lockViewport = () => {
+      const vv = window.visualViewport;
+      const h = Math.round((vv && vv.height) || window.innerHeight);
+      if (h > 0 && h !== lastH) {
+        lastH = h;
+        document.documentElement.style.setProperty('--app-h', h + 'px');
+        document.documentElement.classList.add('vv-locked');
+        if (engine._onResize) engine._onResize(); // ステップ実測でスワイプ距離を再計算
+      }
+      // レイアウトが表示領域よりずれてスクロールした状態を打ち消す (上切れ防止)
+      if (window.scrollY > 0 || document.documentElement.scrollTop > 0) window.scrollTo(0, 0);
+    };
+    lockViewport();
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', lockViewport);
+      window.visualViewport.addEventListener('scroll', lockViewport);
+    }
+    window.addEventListener('resize', lockViewport);
+    window.addEventListener('orientationchange', () => setTimeout(lockViewport, 150));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) lockViewport(); });
+  }
+
   // インジケーター生成 (scroll モードではドット自体作らない)
   const indicators = document.getElementById('indicators');
   if (isVertical) indicators.classList.add('vertical');

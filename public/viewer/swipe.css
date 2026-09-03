@@ -4,13 +4,12 @@
   padding: 0;
 }
 
-/* 高さは lvh (最大ビューポート) 基準。
-   dvh だとブラウザバーの表示切替と食い違った瞬間に下へ黒帯が出る端末があるため、
-   常に画面最大サイズで描画し、バー表示中は下端が僅かに隠れる方を取る */
+/* 初期描画は 100dvh。JS起動後は .vv-locked + --app-h で
+   visualViewport の実寸に固定される (下記参照) */
 html, body {
   width: 100%;
   height: 100%;
-  height: 100lvh;
+  height: 100dvh;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -29,7 +28,7 @@ body.dir-vertical { touch-action: pan-x; }
   left: 0;
   width: 100vw;
   height: 100vh;
-  height: 100lvh;
+  height: 100dvh;
   overflow: hidden;
   touch-action: none; /* ブラウザのジェスチャー処理を無効化、JSで全制御 */
 }
@@ -56,7 +55,7 @@ body.dir-vertical { touch-action: pan-x; }
   flex: 0 0 100vw;
   width: 100vw;
   height: 100vh;
-  height: 100lvh;
+  height: 100dvh;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -65,13 +64,31 @@ body.dir-vertical { touch-action: pan-x; }
   overflow: hidden;
 }
 
-/* 各ステップ — 縦モード: flex-basisもlvhに (JS側は実測値でスワイプ距離を合わせる) */
+/* 各ステップ — 縦モード */
 .swipe-track-v .swipe-step {
   flex: 0 0 100vh;
-  flex: 0 0 100lvh;
+  flex: 0 0 100dvh;
   width: 100vw;
   height: 100vh;
-  height: 100lvh;
+  height: 100dvh;
+}
+
+/* ===== ビューポート実寸ロック =====
+   100dvh/lvh はブラウザバー切替と食い違う端末があり、下に黒帯が出たり上が切れたりする。
+   JSが visualViewport の実寸を --app-h にセットし続け、常に「実際に見えている領域」に一致させる。
+   (スワイプモードのみ。scroll モードは通常スクロールなので対象外) */
+html.vv-locked,
+html.vv-locked body {
+  height: var(--app-h);
+}
+html.vv-locked .swipe-container {
+  height: var(--app-h);
+}
+html.vv-locked .swipe-step {
+  height: var(--app-h);
+}
+html.vv-locked .swipe-track-v .swipe-step {
+  flex: 0 0 var(--app-h);
 }
 
 .swipe-step .step-bg {
