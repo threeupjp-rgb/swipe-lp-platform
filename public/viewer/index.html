@@ -587,6 +587,41 @@ function fireConversion(pixels, opts = {}) {
     window.addEventListener('scroll', () => { if (window.scrollY > 0) window.scrollTo(0, 0); }, { passive: true });
     setInterval(lockViewport, 300); // イベントが来ない端末への保険
 
+    // ===== 初回表示の描画バグ自己回復 =====
+    // 実機で「少しスワイプすると直る」ことを確認済み → スワイプと同じ描画経路
+    // (トラックのtransform更新) を起動直後に自動発生させ、描画の再コミット=自己回復を促す
+    let userTouched = false;
+    const markTouched = () => { userTouched = true; };
+    container.addEventListener('touchstart', markTouched, { once: true, passive: true });
+    container.addEventListener('mousedown', markTouched, { once: true });
+
+    // 1) 最初の3秒間、目に見えないサブピクセルの揺らぎで再コミットを継続的に誘発
+    const wiggleT0 = Date.now();
+    const wiggleTimer = setInterval(() => {
+      if (userTouched || Date.now() - wiggleT0 > 3000) {
+        if (!engine.state.isDragging) { engine.state.delta = 0; engine._updateTransform(false); }
+        clearInterval(wiggleTimer);
+        return;
+      }
+      if (engine.state.isDragging || engine.state.isAnimating) return;
+      engine.state.delta = engine.state.delta ? 0 : 0.4;
+      engine._updateTransform(false);
+    }, 280);
+
+    // 2) 0.9秒後に1回だけスワイプヒント: 次ページを少し見せて戻す
+    //    (実スワイプと同じ経路で描画を確定させる + スワイプ誘導の演出を兼ねる)
+    if (lp.config.steps.length > 1) {
+      setTimeout(() => {
+        if (userTouched || engine.getCurrentIndex() !== 0 || engine.state.isDragging) return;
+        engine.state.delta = -36;
+        engine._updateTransform(true);
+        setTimeout(() => {
+          engine.state.delta = 0;
+          engine._updateTransform(true);
+        }, 330);
+      }, 900);
+    }
+
     // 実機診断モード: ?diag=1 でライブ数値をオーバーレイ表示 (スクショで原因特定用)
     // ページ自体が上下にずれても読めるよう画面中央付近に出す
     if (new URLSearchParams(location.search).get('diag') === '1') {
